@@ -16,7 +16,16 @@ dependencies = [
 fastapi = "0.111.0"
 elasticsearch = {extras = ["async"], version = "8.13.2"}
 redis = "5.0.4"
+flake8 = "7.2.0"
+flake8-builtins = "2.0.0"
+flake8-comprehensions = "3.10.0"
+flake8-debugger = "4.1.2"
+flake8-eradicate = "1.4.0"
 
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.2.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
