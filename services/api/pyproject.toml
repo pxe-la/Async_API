@@ -1,0 +1,26 @@
+[project]
+name = "api"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "maksbolomoznov",email = "bolomozhnov@gmail.com"},
+    {name = "alexander-petrovichev",email = "alexpetro000@gmail.com"},
+    {name = "zakhar-lyrschikov",email = "lirchzakhar@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+dependencies = [
+    "fastapi[standard] (>=0.115.12,<0.116.0)",
+    "elasticsearch (>=9.0.1,<10.0.0)",
+    "redis (>=6.1.0,<7.0.0)",
+    "pydantic (>=2.11.4,<3.0.0)",
+    "uvicorn (>=0.34.2,<0.35.0)"
+]
+
+[tool.poetry]
+packages = [{include = "*", from = "src"}]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
