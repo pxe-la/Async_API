@@ -1,0 +1,20 @@
+[flake8]
+ignore =
+    ; line length - black handles it
+    E501
+    ; conflict with black function overload formating
+    E704
+    ; conflicts with field 'id' in models
+    A003
+
+per-file-ignores =
+    tools/format_code.py:
+        T201
+
+exclude =
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .mypy_cache,
+    .history,
+    venv

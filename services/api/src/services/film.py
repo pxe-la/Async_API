@@ -1,13 +1,13 @@
 from functools import lru_cache
-from typing import Optional
+from typing import Annotated, Optional
 
 from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
+from models.film import Film
 from redis.asyncio import Redis
 
 from db.elastic import get_elastic
 from db.redis import get_redis
-from models.film import Film
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5  # 5 минут
 
@@ -34,10 +34,10 @@ class FilmService:
 
     async def _get_film_from_elastic(self, film_id: str) -> Optional[Film]:
         try:
-            doc = await self.elastic.get(index='movies', id=film_id)
+            doc = await self.elastic.get(index="movies", id=film_id)
         except NotFoundError:
             return None
-        return Film(**doc['_source'])
+        return Film(**doc["_source"])
 
     async def _film_from_cache(self, film_id: str) -> Optional[Film]:
         # Пытаемся получить данные о фильме из кеша, используя команду get
@@ -60,7 +60,7 @@ class FilmService:
 
 @lru_cache()
 def get_film_service(
-        redis: Redis = Depends(get_redis),
-        elastic: AsyncElasticsearch = Depends(get_elastic),
+    redis: Annotated[Redis, Depends(get_redis)],
+    elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
 ) -> FilmService:
     return FilmService(redis, elastic)
