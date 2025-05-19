@@ -31,6 +31,20 @@ services:
       redis:
         condition: service_healthy
 
+  etl:
+    build: services/etl
+    container_name: etl-service
+    restart: always
+    env_file:
+      - .env
+    environment:
+      ELASTIC_HOST: elasticsearch
+    depends_on:
+      theatre-db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
   theatre-db:
     image: postgres:14
     container_name: theatre-db

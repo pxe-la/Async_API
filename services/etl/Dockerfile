@@ -1,22 +1,28 @@
-FROM python:3.10
+FROM python:3.11
 
-WORKDIR /opt/app
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=1 \
+    POETRY_VIRTUALENVS_CREATE=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+RUN pip install poetry==2.1.2
 
-COPY requirements.txt requirements.txt
+WORKDIR /code
 
-RUN  pip install --upgrade pip \
-     && pip install -r requirements.txt --no-cache-dir \
-     && apt-get update  \
-     && apt-get install -y netcat-traditional
+COPY poetry.lock pyproject.toml ./
+
+RUN  poetry install
 
 COPY . .
 
+RUN chmod +x entrypoint.sh
+
+
 RUN addgroup --system etl && adduser --system --group etl && \
-    chown -R etl:etl /opt/app
+    chown -R etl:etl /code
 
 USER etl
 
-EXPOSE 8000
+ENTRYPOINT ["./entrypoint.sh"]

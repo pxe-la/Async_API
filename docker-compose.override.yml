@@ -19,3 +19,5 @@ services:
   elasticsearch:
     ports:
       - "9200:9200"
+    environment:
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g

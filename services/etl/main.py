@@ -313,15 +313,15 @@ if __name__ == "__main__":
         "dbname": settings.postgres_db,
         "user": settings.postgres_user,
         "password": settings.postgres_password,
-        "host": settings.sql_host,
-        "port": settings.sql_port,
+        "host": settings.postgres_host,
+        "port": settings.postgres_port,
     }
     os.makedirs("states/", exist_ok=True)
     storage = JsonFileStorage("states/state.json")
     state = State(storage=storage)
 
     postgres_producer = PostgresProducer(postgres_connect_data, state)
-    elastic_loader = ElasticSearchLoader(os.getenv("ELASTIC_HOST", "localhost"), 9200)
+    elastic_loader = ElasticSearchLoader(settings.elastic_host, 9200)
 
     elastic_loader.create_index()
     while True:
