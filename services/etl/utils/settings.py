@@ -23,4 +23,4 @@ class Settings(BaseSettings):
     elastic_host: str
 
 
-settings = Settings(_env_file=local_dotenv_path, _env_file_encoding="utf-8")
+settings = Settings(_env_file=local_dotenv_path, _env_file_encoding="utf-8")  # type: ignore

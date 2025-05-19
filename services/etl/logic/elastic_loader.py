@@ -1,0 +1,42 @@
+import json
+
+import requests
+from schemas.elasticsearch import ESMovieDocument
+from utils.backoff import backoff
+from utils.logging_settings import logger
+
+
+class ElasticSearchLoader:
+    @backoff()
+    def create_index(self) -> None:
+
+        with open("resources/index.json", "r") as f:
+            index_data = json.load(f)
+
+        requests.put(
+            f"{self.base_url}/movies",
+            data=index_data,
+            headers={"Content-Type": "application/json"},
+        )
+
+    def __init__(self, api_host: str, api_port: int):
+        self.base_url = f"http://{api_host}:{api_port}"  # noqa: E231
+
+    @backoff()
+    def load(self, docs: dict[str, ESMovieDocument]) -> None:
+        if len(docs) == 0:
+            logger.info("Загрузка не требуется")
+            return
+        logger.info(f"Загружаем {len(docs)} фильмов")
+        request_body = ""
+        for doc in docs.values():
+            id_row = {"index": {"_index": "movies", "_id": str(doc.id)}}
+            request_body += f"{json.dumps(id_row)}\n"  # Строка с id
+            request_body += f"{doc.model_dump_json()}\n"  # Строка с объектом
+        request_body += "\n"  # Необходим перенос строки в конце
+        response = requests.post(
+            f"{self.base_url}/_bulk",
+            headers={"Content-Type": "application/x-ndjson"},
+            data=request_body,
+        )
+        logger.info(response.status_code)

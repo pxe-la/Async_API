@@ -20,7 +20,7 @@ class TestDataTransfer:
         data = cursor.fetchall()
 
         for film_uuid in data:
-            film_uuid_str = str(film_uuid["id"])
+            film_uuid_str = str(film_uuid["id"])  # type: ignore
             response = requests.get(
                 f"{self.es_base_url}/movies/_doc/{film_uuid_str}"  # noqa: E231
             )
@@ -34,37 +34,29 @@ class TestDataTransfer:
         data = cursor.fetchall()
 
         for film_uuid in data:
-            film_uuid_str = str(film_uuid["id"])
+            film_uuid_str = str(film_uuid["id"])  # type: ignore
 
             app_api_request = requests.get(
                 f"{self.app_api_base_url}/api/v1/movies/{film_uuid_str}"
             )
             assert app_api_request.status_code == 200
-            app_api_object = app_api_request.json()
+            app_obj = app_api_request.json()
 
             es_api_request = requests.get(
                 f"{self.es_base_url}/movies/_doc/{film_uuid_str}"
             )
             assert es_api_request.status_code == 200
-            es_api_object = es_api_request.json()["_source"]
+            es_obj = es_api_request.json()["_source"]
 
-            assert app_api_object["title"] == es_api_object["title"]
-            assert app_api_object["description"] == es_api_object["description"]
-            assert app_api_object["rating"] == es_api_object["imdb_rating"]
+            assert app_obj["title"] == es_obj["title"]
+            assert app_obj["description"] == es_obj["description"]
+            assert app_obj["rating"] == es_obj["imdb_rating"]
 
-            assert app_api_object["genres"].sort() == es_api_object["genres"].sort()
+            assert app_obj["genres"].sort() == es_obj["genres"].sort()
 
-            assert (
-                app_api_object["actors"].sort() == es_api_object["actors_names"].sort()
-            )
-            assert (
-                app_api_object["directors"].sort()
-                == es_api_object["directors_names"].sort()
-            )
-            assert (
-                app_api_object["writers"].sort()
-                == es_api_object["writers_names"].sort()
-            )
+            assert app_obj["actors"].sort() == es_obj["actors_names"].sort()
+            assert app_obj["directors"].sort() == es_obj["directors_names"].sort()
+            assert app_obj["writers"].sort() == es_obj["writers_names"].sort()
         logger.info("Данные в БД и ES полностью совпадают")
 
 
@@ -85,7 +77,9 @@ if __name__ == "__main__":
         "port": os.getenv("SQL_PORT"),
     }
     with connect(
-        **postgres_connect_data, row_factory=dict_row, cursor_factory=ClientCursor
+        **postgres_connect_data,  # type: ignore
+        row_factory=dict_row,
+        cursor_factory=ClientCursor,
     ) as pg_conn:
         tests = TestDataTransfer(
             "http://localhost:9200", "http://localhost:8000", pg_conn
