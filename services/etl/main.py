@@ -21,7 +21,7 @@ if __name__ == "__main__":
     state = State(storage=storage)
 
     postgres_producer = PostgresProducer(postgres_connect_data, state)
-    elastic_loader = ElasticSearchLoader(settings.elastic_host, 9200)
+    elastic_loader = ElasticSearchLoader(settings.es_host, settings.es_port)
 
     elastic_loader.create_indexes()
     while True:

@@ -2,7 +2,7 @@ import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-local_dotenv_path = "../../local.env"
+local_dotenv_path = "local.env"
 prod_dotenv_path = "../../.env"
 
 dotenv_path = None
@@ -20,7 +20,11 @@ class Settings(BaseSettings):
     postgres_db: str
     postgres_host: str
     postgres_port: str
-    elastic_host: str
+    es_host: str
+    es_port: str
+    project_name: str
+    redis_host: str
+    redis_port: str
 
 
-settings = Settings(_env_file=local_dotenv_path, _env_file_encoding="utf-8")  # type: ignore
+settings = Settings(_env_file=dotenv_path, _env_file_encoding="utf-8")  # type: ignore

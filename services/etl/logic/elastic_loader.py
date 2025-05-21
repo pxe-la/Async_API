@@ -12,11 +12,16 @@ class ElasticSearchLoader:
         with open(file_path, "r") as f:
             index_data = json.load(f)
 
-        requests.put(
+        request = requests.put(
             f"{self.base_url}/{index_name}",
-            data=index_data,
+            json=index_data,
             headers={"Content-Type": "application/json"},
         )
+        status_code = request.status_code
+        if status_code == 400:
+            logger.warning("Elastic WARNING:\n" + request.json())
+        if status_code == 500:
+            logger.warning("Elastic ERROR:\n" + request.json())
 
     @backoff()
     def create_indexes(self) -> None:
