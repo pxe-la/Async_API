@@ -38,7 +38,8 @@ services:
     env_file:
       - .env
     environment:
-      ELASTIC_HOST: elasticsearch
+      ES_HOST: elasticsearch
+      ES_PORT: 9200
     depends_on:
       theatre-db:
         condition: service_healthy
