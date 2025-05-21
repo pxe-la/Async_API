@@ -7,17 +7,21 @@ from utils.logging_settings import logger
 
 
 class ElasticSearchLoader:
-    @backoff()
-    def create_index(self) -> None:
 
-        with open("resources/movie_index.json", "r") as f:
+    def create_index(self, file_path: str, index_name: str):
+        with open(file_path, "r") as f:
             index_data = json.load(f)
 
         requests.put(
-            f"{self.base_url}/movies",
+            f"{self.base_url}/{index_name}",
             data=index_data,
             headers={"Content-Type": "application/json"},
         )
+
+    @backoff()
+    def create_indexes(self) -> None:
+        self.create_index("resources/movie_index.json", "movies")
+        self.create_index("resources/genre_index.json", "genres")
 
     def __init__(self, api_host: str, api_port: int):
         self.base_url = f"http://{api_host}:{api_port}"  # noqa: E231

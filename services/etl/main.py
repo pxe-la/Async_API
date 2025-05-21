@@ -23,7 +23,7 @@ if __name__ == "__main__":
     postgres_producer = PostgresProducer(postgres_connect_data, state)
     elastic_loader = ElasticSearchLoader(settings.elastic_host, 9200)
 
-    elastic_loader.create_index()
+    elastic_loader.create_indexes()
     while True:
         films = postgres_producer.get_films_by_modified_self()
         elastic_loader.load(films)
