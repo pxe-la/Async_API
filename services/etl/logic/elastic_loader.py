@@ -10,7 +10,7 @@ class ElasticSearchLoader:
     @backoff()
     def create_index(self) -> None:
 
-        with open("resources/index.json", "r") as f:
+        with open("resources/movie_index.json", "r") as f:
             index_data = json.load(f)
 
         requests.put(
