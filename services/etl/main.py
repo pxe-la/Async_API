@@ -26,13 +26,17 @@ if __name__ == "__main__":
     elastic_loader.create_indexes()
     while True:
         films = postgres_producer.get_films_by_modified_self()
-        elastic_loader.load(films)
+        elastic_loader.load(films, "movies")
         time.sleep(1)
 
         films = postgres_producer.get_film_works_by_modified_genres()
-        elastic_loader.load(films)
+        elastic_loader.load(films, "movies")
         time.sleep(1)
 
         films = postgres_producer.get_film_works_by_modified_persons()
-        elastic_loader.load(films)
+        elastic_loader.load(films, "movies")
+        time.sleep(1)
+
+        genres = postgres_producer.get_modified_genres()
+        elastic_loader.load(genres, "genres")
         time.sleep(1)

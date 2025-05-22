@@ -1,7 +1,7 @@
 import json
 
 import requests
-from schemas.elasticsearch import ESMovieDocument
+from schemas.elasticsearch import ESMovieDocument, Genre
 from utils.backoff import backoff
 from utils.logging_settings import logger
 
@@ -19,9 +19,9 @@ class ElasticSearchLoader:
         )
         status_code = request.status_code
         if status_code == 400:
-            logger.warning("Elastic WARNING:\n" + request.json())
+            logger.warning("Elastic WARNING:\n" + str(request.json()))
         if status_code == 500:
-            logger.warning("Elastic ERROR:\n" + request.json())
+            logger.warning("Elastic ERROR:\n" + str(request.json()))
 
     @backoff()
     def create_indexes(self) -> None:
@@ -32,14 +32,14 @@ class ElasticSearchLoader:
         self.base_url = f"http://{api_host}:{api_port}"  # noqa: E231
 
     @backoff()
-    def load(self, docs: dict[str, ESMovieDocument]) -> None:
+    def load(self, docs: dict[str, ESMovieDocument | Genre], index_name: str) -> None:
         if len(docs) == 0:
-            logger.info("Загрузка не требуется")
+            logger.info(f"Загрузка {index_name} не требуется")
             return
-        logger.info(f"Загружаем {len(docs)} фильмов")
+        logger.info(f"Загружаем {len(docs)} записей в {index_name}")
         request_body = ""
         for doc in docs.values():
-            id_row = {"index": {"_index": "movies", "_id": str(doc.id)}}
+            id_row = {"index": {"_index": index_name, "_id": str(doc.id)}}
             request_body += f"{json.dumps(id_row)}\n"  # Строка с id
             request_body += f"{doc.model_dump_json()}\n"  # Строка с объектом
         request_body += "\n"  # Необходим перенос строки в конце

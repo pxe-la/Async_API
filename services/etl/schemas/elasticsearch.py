@@ -41,3 +41,14 @@ class ESMovieDocument(BaseModel):
         json_encoders = {
             UUID: lambda v: str(v),
         }
+
+
+class Genre(BaseModel):
+    id: UUID  # noqa: VNE003, A003
+    name: str
+    description: str | None
+
+    class Config:
+        json_encoders = {
+            UUID: lambda v: str(v),
+        }

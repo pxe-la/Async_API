@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import psycopg
 from psycopg import ClientCursor, Cursor
 from psycopg.rows import dict_row
-from schemas.elasticsearch import ESMovieDocument, Person
+from schemas.elasticsearch import ESMovieDocument, Genre, Person
 from utils.backoff import backoff
 from utils.logging_settings import logger
 from utils.state import State
@@ -183,3 +183,32 @@ class PostgresProducer:
             films_data = self.get_films_by_ids(films_ids, cursor)
             merged_objects = self.merge_data_to_models(films_data)
             return merged_objects
+
+    @backoff()
+    def get_genres_by_ids(self, genres_ids: List[str], cursor) -> List[dict]:
+        query = """
+                SELECT g.id, g.name, g.description
+                FROM content.genre g
+                WHERE g.id = ANY(%s)
+                """
+        cursor.execute(query, (genres_ids,))
+        data = cursor.fetchall()
+        return data
+
+    def merge_genres_to_models(self, genres_data: List[dict]) -> Dict[str, Genre]:
+        docs = {}
+        for genre in genres_data:
+            doc = Genre(**genre)
+            docs[doc.id] = doc
+        return docs
+
+    @backoff()
+    def get_modified_genres(self) -> Dict[str, Genre]:
+        with psycopg.connect(
+            **self.connect_data, row_factory=dict_row, cursor_factory=ClientCursor
+        ) as pg_conn:
+            cursor = pg_conn.cursor()
+            genres_ids = self.get_modified_ids("genre", cursor)
+            genres_data = self.get_genres_by_ids(genres_ids, cursor)
+            model_objects = self.merge_genres_to_models(genres_data)
+            return model_objects
