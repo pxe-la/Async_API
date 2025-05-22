@@ -21,7 +21,7 @@ class ElasticSearchLoader:
         if status_code == 400:
             logger.warning("Elastic WARNING:\n" + str(request.json()))
         if status_code == 500:
-            logger.warning("Elastic ERROR:\n" + str(request.json()))
+            logger.error("Elastic ERROR:\n" + str(request.json()))
 
     @backoff()
     def create_indexes(self) -> None:
