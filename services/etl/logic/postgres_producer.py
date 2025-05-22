@@ -15,7 +15,7 @@ class PostgresProducer:
         self.state = state
         self.connect_data = connect_data
 
-    def get_modified_ids(self, table_name: str, cursor: Cursor) -> List[str]:
+    def _get_modified_ids(self, table_name: str, cursor: Cursor) -> List[str]:
         date_time = self.state.get_state(f"{table_name}_proceed_date_time")
         if not date_time:
             date_time = datetime.datetime.min
@@ -46,7 +46,7 @@ class PostgresProducer:
 
         return [str(item["id"]) for item in data]
 
-    def get_films_with_modified_persons(
+    def _get_films_with_modified_persons(
         self, modified_persons: list, cursor: Cursor
     ) -> List[str]:
         query = """
@@ -61,7 +61,7 @@ class PostgresProducer:
         data: Tuple[dict] = cursor.fetchall()  # type: ignore
         return [str(item["id"]) for item in data]
 
-    def get_films_by_ids(
+    def _get_films_by_ids(
         self, films_with_modified_persons: List[str], cursor: Cursor
     ) -> List[dict]:
         query = """
@@ -88,7 +88,7 @@ class PostgresProducer:
         data = cursor.fetchall()
         return data  # type: ignore
 
-    def merge_data_to_models(  # noqa: CCR001
+    def _merge_data_to_models(  # noqa: CCR001
         self, data: List[dict]
     ) -> Dict[str, ESMovieDocument]:
         docs: Dict[str, ESMovieDocument] = {}
@@ -151,12 +151,12 @@ class PostgresProducer:
             **self.connect_data, row_factory=dict_row, cursor_factory=ClientCursor
         ) as pg_conn:
             cursor = pg_conn.cursor()
-            modified_persons_ids = self.get_modified_ids("person", cursor)
-            films_ids = self.get_films_with_modified_persons(
+            modified_persons_ids = self._get_modified_ids("person", cursor)
+            films_ids = self._get_films_with_modified_persons(
                 modified_persons_ids, cursor
             )
-            film_data = self.get_films_by_ids(films_ids, cursor)
-            merged_objects = self.merge_data_to_models(film_data)
+            film_data = self._get_films_by_ids(films_ids, cursor)
+            merged_objects = self._merge_data_to_models(film_data)
             return merged_objects
 
     @backoff()
@@ -165,9 +165,9 @@ class PostgresProducer:
             **self.connect_data, row_factory=dict_row, cursor_factory=ClientCursor
         ) as pg_conn:
             cursor = pg_conn.cursor()
-            films_ids = self.get_modified_ids("film_work", cursor)
-            films_data = self.get_films_by_ids(films_ids, cursor)
-            merged_objects = self.merge_data_to_models(films_data)
+            films_ids = self._get_modified_ids("film_work", cursor)
+            films_data = self._get_films_by_ids(films_ids, cursor)
+            merged_objects = self._merge_data_to_models(films_data)
             return merged_objects
 
     @backoff()
@@ -178,14 +178,14 @@ class PostgresProducer:
             **self.connect_data, row_factory=dict_row, cursor_factory=ClientCursor
         ) as pg_conn:
             cursor = pg_conn.cursor()
-            genres_ids = self.get_modified_ids("genre", cursor)
+            genres_ids = self._get_modified_ids("genre", cursor)
             films_ids = self.get_films_with_modified_genres(genres_ids, cursor)
-            films_data = self.get_films_by_ids(films_ids, cursor)
-            merged_objects = self.merge_data_to_models(films_data)
+            films_data = self._get_films_by_ids(films_ids, cursor)
+            merged_objects = self._merge_data_to_models(films_data)
             return merged_objects
 
     @backoff()
-    def get_genres_by_ids(self, genres_ids: List[str], cursor) -> List[dict]:
+    def _get_genres_by_ids(self, genres_ids: List[str], cursor) -> List[dict]:
         query = """
                 SELECT g.id, g.name, g.description
                 FROM content.genre g
@@ -195,7 +195,7 @@ class PostgresProducer:
         data = cursor.fetchall()
         return data
 
-    def merge_genres_to_models(self, genres_data: List[dict]) -> Dict[str, Genre]:
+    def _merge_genres_to_models(self, genres_data: List[dict]) -> Dict[str, Genre]:
         docs = {}
         for genre in genres_data:
             doc = Genre(**genre)
@@ -208,7 +208,7 @@ class PostgresProducer:
             **self.connect_data, row_factory=dict_row, cursor_factory=ClientCursor
         ) as pg_conn:
             cursor = pg_conn.cursor()
-            genres_ids = self.get_modified_ids("genre", cursor)
-            genres_data = self.get_genres_by_ids(genres_ids, cursor)
-            model_objects = self.merge_genres_to_models(genres_data)
+            genres_ids = self._get_modified_ids("genre", cursor)
+            genres_data = self._get_genres_by_ids(genres_ids, cursor)
+            model_objects = self._merge_genres_to_models(genres_data)
             return model_objects
