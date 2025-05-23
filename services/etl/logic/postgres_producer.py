@@ -15,8 +15,12 @@ class PostgresProducer:
         self.state = state
         self.connect_data = connect_data
 
-    def _get_modified_ids(self, table_name: str, cursor: Cursor) -> List[str]:
-        date_time = self.state.get_state(f"{table_name}_proceed_date_time")
+    def _get_modified_ids(
+        self, table_name: str, cursor: Cursor, state_prefix: str = ""
+    ) -> List[str]:
+        date_time = self.state.get_state(
+            f"{state_prefix}_{table_name}_proceed_date_time"
+        )
         if not date_time:
             date_time = datetime.datetime.min
         else:
@@ -208,7 +212,9 @@ class PostgresProducer:
             **self.connect_data, row_factory=dict_row, cursor_factory=ClientCursor
         ) as pg_conn:
             cursor = pg_conn.cursor()
-            genres_ids = self._get_modified_ids("genre", cursor)
+            genres_ids = self._get_modified_ids(
+                "genre", cursor, state_prefix="genres_index"
+            )
             genres_data = self._get_genres_by_ids(genres_ids, cursor)
             model_objects = self._merge_genres_to_models(genres_data)
             return model_objects

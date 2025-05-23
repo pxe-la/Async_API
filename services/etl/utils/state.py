@@ -11,12 +11,9 @@ class State:
 
     def set_state(self, key: str, value: Any) -> None:
         """Установить состояние для определённого ключа."""
-        state = self.storage.retrieve_state()
-        state[key] = value
-        self.storage.save_state(state)
+        self.storage.set(key, value)
 
     def get_state(self, key: str) -> Any:
         """Получить состояние по определённому ключу."""
-        state = self.storage.retrieve_state()
-        data = state.get(key)
-        return data
+        state = self.storage.get(key)
+        return state

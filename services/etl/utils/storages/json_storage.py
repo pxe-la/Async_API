@@ -1,5 +1,4 @@
 import json
-from typing import Any, Dict
 
 from utils.storages.base_storage import BaseStorage  # type: ignore
 
@@ -19,12 +18,13 @@ class JsonFileStorage(BaseStorage):
             with open(self.file_path, "w") as f:
                 json.dump({}, f)
 
-    def save_state(self, state: Dict[str, Any]) -> None:
-        """Сохранить состояние в хранилище."""
+    def get(self, key: str) -> str:
+        with open(self.file_path, "r") as f:
+            return json.load(f).get(key)
+
+    def set(self, key: str, value: str) -> None:
+        with open(self.file_path, "r") as f:
+            state = json.load(f)
+        state[key] = value
         with open(self.file_path, "w") as f:
             json.dump(state, f)
-
-    def retrieve_state(self) -> Dict[str, Any]:
-        """Получить состояние из хранилища."""
-        with open(self.file_path, "r") as f:
-            return json.load(f)
