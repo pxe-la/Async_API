@@ -12,6 +12,8 @@ ignore =
 per-file-ignores =
     tools/format_code.py:
         T201
+    services/etl/*:
+        CCE001
 
 exclude =
     .git,

@@ -38,6 +38,12 @@ services:
     env_file:
       - .env
     environment:
+      POSTGRES_HOST: theatre-db
+      POSTGRES_PORT: 5432
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
       ES_HOST: elasticsearch
       ES_PORT: 9200
     depends_on:
