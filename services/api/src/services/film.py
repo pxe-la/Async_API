@@ -119,14 +119,14 @@ class FilmService:
     async def _save_films_to_cache(self, redis_key: str, films: List[Film]) -> None:
         await self.redis.set(
             redis_key,
-            json.dumps([f.model_dump() for f in films]),
+            json.dumps([f.model_dump(mode="json") for f in films]),
             FILM_LIST_CACHE_EXPIRE_IN_SECONDS,
         )
 
     async def _get_films_from_cache(self, redis_key: str) -> Optional[List[Film]]:
         cached_films = await self.redis.get(redis_key)
         if cached_films:
-            return [Film.model_validate_json(item) for item in json.loads(cached_films)]
+            return [Film.model_validate(item) for item in json.loads(cached_films)]
         return None
 
 

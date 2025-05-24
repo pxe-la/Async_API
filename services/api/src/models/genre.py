@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -6,4 +7,4 @@ from pydantic import BaseModel
 class Genre(BaseModel):
     id: UUID
     name: str
-    description: str | None
+    description: Optional[str] = None
