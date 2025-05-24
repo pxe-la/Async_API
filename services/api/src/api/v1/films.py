@@ -22,12 +22,21 @@ class FilmItemResponse(BaseModel):
         return cls(uuid=film.id, title=film.title, imdb_rating=film.imdb_rating)
 
 
+class FilmDetailGenreResponse(BaseModel):
+    id: UUID
+    name: str
+
+    @classmethod
+    def from_model(cls, genre: Genre) -> "FilmDetailGenreResponse":
+        return cls(id=genre.id, name=genre.name)
+
+
 class FilmDetailResponse(BaseModel):
     uuid: UUID
     title: str
     imdb_rating: float | None
     description: str | None
-    genres: List[Genre]
+    genre: List[FilmDetailGenreResponse]
     actors: List[Person]
     writers: List[Person]
     directors: List[Person]
@@ -39,10 +48,10 @@ class FilmDetailResponse(BaseModel):
             title=film.title,
             imdb_rating=film.imdb_rating,
             description=film.description,
-            genres=list(film.genres),
-            actors=list(film.actors),
-            writers=list(film.writers),
-            directors=list(film.directors),
+            genre=[FilmDetailGenreResponse.from_model(genre) for genre in film.genres],
+            actors=film.actors,
+            writers=film.writers,
+            directors=film.directors,
         )
 
 
