@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from typing import Dict, List, Tuple
 
 import psycopg
@@ -18,34 +18,38 @@ class PostgresProducer:
     def _get_modified_ids(
         self, table_name: str, cursor: Cursor, state_prefix: str = ""
     ) -> List[str]:
-        date_time = self.state.get_state(
-            f"{state_prefix}_{table_name}_proceed_date_time"
+        state_key = f"{state_prefix}_{table_name}_state"
+        state = self.state.get_state_json(state_key)
+
+        proceed_timestamp, proceed_id = (
+            state
+            if state
+            else (datetime.min.isoformat(), "00000000-0000-0000-0000-000000000000")
         )
-        if not date_time:
-            date_time = datetime.datetime.min
-        else:
-            date_time = datetime.datetime.fromisoformat(date_time)
 
         query = f"""
                     SELECT id, modified
                     FROM content.{table_name}
-                    WHERE modified > %s
-                    ORDER BY modified
+                    WHERE modified > %s OR (modified = %s AND id > %s)
+                    ORDER BY modified, id
                     LIMIT 100;
                 """  # noqa: E702, E231, E241
 
-        cursor.execute(query, (date_time.isoformat(),))
+        cursor.execute(query, (proceed_timestamp, proceed_timestamp, proceed_id))
         data: Tuple[dict] = cursor.fetchall()  # type: ignore
 
         if len(data) == 0:
             return []
 
-        checkpoint_datetime = data[-1]["modified"]
+        last_processed_timestamp = data[-1]["modified"].isoformat()
+        last_processed_id = str(data[-1]["id"])
+
         logger.info(
-            f"{table_name}_proceed_date_time: {checkpoint_datetime.isoformat()}"
+            f"{table_name}: last_processed_timestamp: {last_processed_timestamp}, last_processed_id: {last_processed_id}"
         )
-        self.state.set_state(
-            f"{table_name}_proceed_date_time", checkpoint_datetime.isoformat()
+
+        self.state.set_state_json(
+            state_key, [last_processed_timestamp, last_processed_id]
         )
 
         return [str(item["id"]) for item in data]
