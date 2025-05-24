@@ -22,6 +22,9 @@ dependencies = [
 packages = [{include = "*", from = "src"}]
 package-mode = false
 
+[tool.poetry.group.dev.dependencies]
+types-requests = "^2.32.0.20250515"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
