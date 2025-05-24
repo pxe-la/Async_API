@@ -6,6 +6,8 @@ ignore =
     E704
     ; conflicts with field 'id' in models
     A003
+    ; conflicts with fastapi's use of queries
+    B008
 
 per-file-ignores =
     tools/format_code.py:
