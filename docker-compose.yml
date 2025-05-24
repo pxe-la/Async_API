@@ -44,8 +44,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
-      ES_HOST: elasticsearch
-      ES_PORT: 9200
+      ES_URL: http://elasticsearch:9200
     depends_on:
       theatre-db:
         condition: service_healthy

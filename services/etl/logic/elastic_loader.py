@@ -28,8 +28,8 @@ class ElasticSearchLoader:
         self.create_index("resources/movie_index.json", "movies")
         self.create_index("resources/genre_index.json", "genres")
 
-    def __init__(self, api_host: str, api_port: int):
-        self.base_url = f"http://{api_host}:{api_port}"  # noqa: E231
+    def __init__(self, api_url: str):
+        self.base_url = api_url  # noqa: E231
 
     @backoff()
     def load(self, docs: dict[str, ESMovieDocument | Genre], index_name: str) -> int:
