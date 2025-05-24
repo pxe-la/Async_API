@@ -10,7 +10,7 @@ from models.film import Film
 from redis.asyncio import Redis
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
-FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 60
+FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 1
 
 
 class FilmService:
@@ -100,7 +100,12 @@ class FilmService:
                 "query": (
                     {"match_all": {}}
                     if genre_id is None
-                    else {"term": {"genres.id": genre_id}}
+                    else {
+                        "nested": {
+                            "path": "genres",
+                            "query": {"term": {"genres.id": genre_id}},
+                        }
+                    }
                 ),
                 "sort": [{sort_field: {"order": order}}],
                 "from": (page_number - 1) * page_size,
