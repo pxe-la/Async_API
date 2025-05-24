@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import psycopg
 from psycopg import ClientCursor, Cursor
 from psycopg.rows import dict_row
-from schemas.elasticsearch import ESMovieDocument, Genre, Person
+from schemas.elasticsearch import ESMovieDocument, Genre, GenreBaseInfo, Person
 from utils.backoff import backoff
 from utils.logging_settings import logger
 from utils.state import State
@@ -83,6 +83,7 @@ class PostgresProducer:
                         pfw.role as pfw_role,
                         p.id as p_id,
                         p.full_name as p_full_name,
+                        g.id as g_id,
                         g.name as g_name
                     FROM content.film_work fw
                     LEFT JOIN content.person_film_work pfw ON pfw.film_work_id = fw.id
@@ -109,6 +110,7 @@ class PostgresProducer:
                     description=row["fw_description"],
                     imdb_rating=row["fw_rating"],
                     genres=set(),
+                    genres_names=set(),
                     actors=set(),
                     actors_names=set(),
                     directors=set(),
@@ -118,22 +120,23 @@ class PostgresProducer:
                 )
                 docs[row["fw_id"]] = doc
 
-            genre = row.get("g_name")
-            if genre:
+            if row.get("g_id"):
+                genre = GenreBaseInfo(id=row.get("g_id"), name=row.get("g_name"))
                 doc.genres.add(genre)
-            if not row.get("p_id"):
-                continue
-            person = Person(id=row["p_id"], name=row["p_full_name"])
-            role = row.get("pfw_role")
-            if role == "actor":
-                doc.actors.add(person)
-                doc.actors_names.add(person.name)
-            elif role == "writer":
-                doc.writers.add(person)
-                doc.writers_names.add(person.name)
-            elif role == "director":
-                doc.directors.add(person)
-                doc.directors_names.add(person.name)
+                doc.genres_names.add(genre.name)
+
+            if row.get("p_id"):
+                person = Person(id=row["p_id"], name=row["p_full_name"])
+                role = row.get("pfw_role")
+                if role == "actor":
+                    doc.actors.add(person)
+                    doc.actors_names.add(person.name)
+                elif role == "writer":
+                    doc.writers.add(person)
+                    doc.writers_names.add(person.name)
+                elif role == "director":
+                    doc.directors.add(person)
+                    doc.directors_names.add(person.name)
         return docs
 
     def get_films_with_modified_genres(
