@@ -18,9 +18,6 @@ services:
       POSTGRES_HOST: theatre-db
       POSTGRES_PORT: 5432
 
-      ES_HOST: elasticsearch
-      ES_PORT: 9200
-
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
