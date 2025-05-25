@@ -5,6 +5,5 @@ router = APIRouter()
 
 
 class Writers(BaseModel):
-
     id: int
     full_name: str

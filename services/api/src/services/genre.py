@@ -19,40 +19,33 @@ class GenreService:
         self.elastic = elastic
 
     async def get_by_id(self, genre_id: str) -> Optional[Genre]:
+        redis_key = f"genre:{genre_id}"
 
-        genre = await self._genre_from_cache(genre_id)
-        if not genre:
 
-            genre = await self._get_genre_from_elastic(genre_id)
-            if not genre:
+        cached_genre = await self.redis.get(redis_key)
+        if cached_genre:
+            return Genre.model_validate_json(cached_genre)
 
-                return None
-
-            await self._put_genre_to_cache(genre)
-
-        return genre
-
-    async def _get_genre_from_elastic(self, genre_id: str) -> Optional[Genre]:
         try:
-            doc = await self.elastic.get(index="genre", id=genre_id)
+
+            genre_doc = await self.elastic.get(
+                index="genres",
+                id=genre_id
+            )
         except NotFoundError:
             return None
-        return Genre(**doc["_source"])
 
-    async def _genre_from_cache(self, genre_id: str) -> Optional[Genre]:
 
-        data = await self.redis.get(genre_id)
-        if not data:
-            return None
+        genre = Genre(**genre_doc["_source"])
 
-        genre = Genre.parse_raw(data)
+
+        await self.redis.set(
+            redis_key,
+            genre.model_dump_json(),
+            GENRE_CACHE_EXPIRE_IN_SECONDS
+        )
+
         return genre
-
-    async def _put_genre_to_cache(self, genre: Genre):
-
-        await self.redis.set(genre.id, genre.json(), GENRE_CACHE_EXPIRE_IN_SECONDS)
-
-
 @lru_cache()
 def get_genre_service(
     redis: Annotated[Redis, Depends(get_redis)],

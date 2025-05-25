@@ -5,6 +5,5 @@ router = APIRouter()
 
 
 class Directors(BaseModel):
-
     id: int
     full_name: str

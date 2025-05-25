@@ -4,13 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from services.api.src.services.genre import GenreService, get_genre_service
+from services.genre import GenreService, get_genre_service
 
 router = APIRouter()
 
 
 class Genre(BaseModel):
-
     id: int
     name: str
 

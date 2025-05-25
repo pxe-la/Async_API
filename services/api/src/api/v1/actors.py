@@ -5,6 +5,5 @@ router = APIRouter()
 
 
 class Actors(BaseModel):
-
     id: int
     full_name: str
