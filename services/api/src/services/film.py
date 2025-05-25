@@ -10,7 +10,7 @@ from models.film import Film
 from redis.asyncio import Redis
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
-FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 1
+FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 60
 
 
 class FilmService:
