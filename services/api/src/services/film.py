@@ -1,13 +1,12 @@
 from functools import lru_cache
 from typing import Annotated, Optional
 
-from elasticsearch import AsyncElasticsearch, NotFoundError
-from fastapi import Depends
-from redis.asyncio import Redis
-
 from db.elastic import get_elastic
 from db.redis import get_redis
+from elasticsearch import AsyncElasticsearch, NotFoundError
+from fastapi import Depends
 from models.film import Film
+from redis.asyncio import Redis
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5  # 5 минут
 
@@ -31,8 +30,6 @@ class FilmService:
             await self._put_film_to_cache(film)
 
         return film
-
-
 
     async def _get_film_from_elastic(self, film_id: str) -> Optional[Film]:
         try:
