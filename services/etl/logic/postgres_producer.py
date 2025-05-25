@@ -206,10 +206,28 @@ class PostgresProducer:
         data = cursor.fetchall()
         return data
 
+    @backoff()
+    def _get_person_by_ids(self, persons_ids, cursor):
+        query = """
+                SELECT p.id, p.full_name as name
+                FROM content.person p
+                WHERE p.id = ANY(%s)
+                """
+        cursor.execute(query, (persons_ids,))
+        data = cursor.fetchall()
+        return data
+
     def _merge_genres_to_models(self, genres_data: List[dict]) -> Dict[str, Genre]:
         docs = {}
         for genre in genres_data:
             doc = Genre(**genre)
+            docs[doc.id] = doc
+        return docs
+
+    def _merge_persons_to_models(self, persons_data: List[dict]) -> Dict[str, Person]:
+        docs = {}
+        for person in persons_data:
+            doc = Person(**person)
             docs[doc.id] = doc
         return docs
 
@@ -224,4 +242,17 @@ class PostgresProducer:
             )
             genres_data = self._get_genres_by_ids(genres_ids, cursor)
             model_objects = self._merge_genres_to_models(genres_data)
+            return model_objects
+
+    @backoff()
+    def get_modified_persons(self) -> dict[str, Person]:
+        with psycopg.connect(
+            **self.connect_data, row_factory=dict_row, cursor_factory=ClientCursor
+        ) as pg_conn:
+            cursor = pg_conn.cursor()
+            persons_ids = self._get_modified_ids(
+                "person", cursor, state_prefix="person_index"
+            )
+            persons_data = self._get_person_by_ids(persons_ids, cursor)
+            model_objects = self._merge_persons_to_models(persons_data)
             return model_objects
