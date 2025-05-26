@@ -64,7 +64,7 @@ class FilmDetailResponse(BaseModel):
     response_description="Film name and IMDb rating",
     tags=["films"],
 )
-async def films_list(
+async def list_films(
     film_service: Annotated[FilmService, Depends(get_film_service)],
     sort: str = Query(
         "-imdb_rating",
@@ -78,7 +78,10 @@ async def films_list(
     page_size: int = Query(50, ge=1, le=100),
     page_number: int = Query(1, ge=1),
 ) -> list[FilmItemResponse]:
-    films = await film_service.list_films(sort, genre, page_size, page_number)
+    films = await film_service.list_films(
+        page_size, page_number, genre_id=genre, sort=sort
+    )
+
     return [FilmItemResponse.from_model(f) for f in films]
 
 
@@ -91,13 +94,14 @@ async def films_list(
     response_description="Film name and IMDb rating",
     tags=["films"],
 )
-async def films_search(
+async def search_films(
     film_service: Annotated[FilmService, Depends(get_film_service)],
     query: str = Query(..., min_length=1, description="Search query"),
     page_size: int = Query(50, ge=1, le=100),
     page_number: int = Query(1, ge=1),
 ) -> list[FilmItemResponse]:
     films = await film_service.search_films(query, page_size, page_number)
+
     return [FilmItemResponse.from_model(f) for f in films]
 
 
@@ -109,7 +113,7 @@ async def films_search(
     response_description="Detailed information about the film",
     tags=["films"],
 )
-async def film_details(
+async def get_film_by_id(
     film_id: str,
     film_service: Annotated[FilmService, Depends(get_film_service)],
 ) -> FilmDetailResponse:

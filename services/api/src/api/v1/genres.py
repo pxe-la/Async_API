@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -21,12 +21,12 @@ class GenreResponse(BaseModel):
 
 @router.get(
     "/",
-    response_model=list[GenreResponse],
+    response_model=List[GenreResponse],
     summary="Genres list",
     description="Returns a list of genres.",
     tags=["genres"],
 )
-async def genres_list(
+async def list_genres(
     genre_service: Annotated[GenreService, Depends(get_genre_service)],
     page_size: int = Query(50, ge=1, le=100),
     page_number: int = Query(1, ge=1),

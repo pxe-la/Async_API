@@ -1,6 +1,6 @@
 import json
 from functools import lru_cache
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, Iterable, List, Optional
 
 from db.elastic import get_elastic
 from db.redis import get_redis
@@ -28,11 +28,11 @@ class FilmService:
             return Film.model_validate_json(cached_film)
 
         try:
-            film_doc = await self.elastic.get(index=self.INDEX, id=film_id)
+            response = await self.elastic.get(index=self.INDEX, id=film_id)
         except NotFoundError:
             return None
 
-        film = Film(**film_doc["_source"])
+        film = Film(**response["_source"])
 
         await self.redis.set(
             redis_key,
@@ -81,10 +81,10 @@ class FilmService:
 
     async def list_films(
         self,
-        sort: str = "imdb_rating",
+        page_size: int,
+        page_number: int,
         genre_id: Optional[str] = None,
-        page_size: int = 50,
-        page_number: int = 1,
+        sort: str = "imdb_rating",
     ) -> List[Film]:
         redis_key = f"films:list:{sort}:{genre_id}:{page_size}:{page_number}"
 
@@ -121,7 +121,7 @@ class FilmService:
         docs = await self.elastic.search(index=self.INDEX, body=body)
         return [Film(**hit["_source"]) for hit in docs["hits"]["hits"]]
 
-    async def _save_films_to_cache(self, redis_key: str, films: List[Film]) -> None:
+    async def _save_films_to_cache(self, redis_key: str, films: Iterable[Film]) -> None:
         await self.redis.set(
             redis_key,
             json.dumps([f.model_dump(mode="json") for f in films]),
@@ -132,6 +132,7 @@ class FilmService:
         cached_films = await self.redis.get(redis_key)
         if cached_films:
             return [Film.model_validate(item) for item in json.loads(cached_films)]
+
         return None
 
 
