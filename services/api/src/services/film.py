@@ -1,6 +1,6 @@
 import json
 from functools import lru_cache
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, Iterable, List, Optional
 
 from db.elastic import get_elastic
 from db.redis import get_redis
@@ -28,11 +28,11 @@ class FilmService:
             return Film.model_validate_json(cached_film)
 
         try:
-            film_doc = await self.elastic.get(index=self.INDEX, id=film_id)
+            response = await self.elastic.get(index=self.INDEX, id=film_id)
         except NotFoundError:
             return None
 
-        film = Film(**film_doc["_source"])
+        film = Film(**response["_source"])
 
         await self.redis.set(
             redis_key,
@@ -56,23 +56,21 @@ class FilmService:
 
         films = await self._get_films_from_elastic(
             {
-                "query": {
-                    "multi_match": {
-                        "query": query,
-                        "fields": [
-                            "title^3",
-                            "description",
-                            "genres_names",
-                            "actors_names",
-                            "directors_names",
-                            "writers_names",
-                        ],
-                        "fuzziness": "AUTO",
-                    },
+                "multi_match": {
+                    "query": query,
+                    "fields": [
+                        "title^3",
+                        "description",
+                        "genres_names",
+                        "actors_names",
+                        "directors_names",
+                        "writers_names",
+                    ],
+                    "fuzziness": "AUTO",
                 },
-                "from": (page_number - 1) * page_size,
-                "size": page_size,
             },
+            page_size=page_size,
+            page_number=page_number,
         )
 
         await self._save_films_to_cache(redis_key, films)
@@ -81,10 +79,10 @@ class FilmService:
 
     async def list_films(
         self,
-        sort: str = "imdb_rating",
+        page_size: int,
+        page_number: int,
         genre_id: Optional[str] = None,
-        page_size: int = 50,
-        page_number: int = 1,
+        sort: str = "imdb_rating",
     ) -> List[Film]:
         redis_key = f"films:list:{sort}:{genre_id}:{page_size}:{page_number}"
 
@@ -92,36 +90,96 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        sort_field = sort.lstrip("-")
-        order = "desc" if sort.startswith("-") else "asc"
-
         films = await self._get_films_from_elastic(
-            {
-                "query": (
-                    {"match_all": {}}
-                    if genre_id is None
-                    else {
-                        "nested": {
-                            "path": "genres",
-                            "query": {"term": {"genres.id": genre_id}},
-                        }
+            (
+                {"match_all": {}}
+                if genre_id is None
+                else {
+                    "nested": {
+                        "path": "genres",
+                        "query": {"term": {"genres.id": genre_id}},
                     }
-                ),
-                "sort": [{sort_field: {"order": order}}],
-                "from": (page_number - 1) * page_size,
-                "size": page_size,
-            },
+                }
+            ),
+            page_size=page_size,
+            page_number=page_number,
+            sort=sort,
         )
 
         await self._save_films_to_cache(redis_key, films)
 
         return films
 
-    async def _get_films_from_elastic(self, body: Dict[str, Any]) -> List[Film]:
-        docs = await self.elastic.search(index=self.INDEX, body=body)
-        return [Film(**hit["_source"]) for hit in docs["hits"]["hits"]]
+    async def get_films_with_person(
+        self,
+        person_id: str,
+        sort: str = "imdb_rating",
+    ) -> List[Film]:
+        redis_key = f"person:{person_id}:roles"
 
-    async def _save_films_to_cache(self, redis_key: str, films: List[Film]) -> None:
+        cached_films = await self._get_films_from_cache(redis_key)
+        if cached_films:
+            return cached_films
+
+        films = await self._get_films_from_elastic(
+            {
+                "bool": {
+                    "should": [
+                        {
+                            "nested": {
+                                "path": "actors",
+                                "query": {"term": {"actors.id": person_id}},
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "directors",
+                                "query": {"term": {"directors.id": person_id}},
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "writers",
+                                "query": {"term": {"writers.id": person_id}},
+                            }
+                        },
+                    ]
+                }
+            },
+            sort=sort,
+        )
+
+        await self._save_films_to_cache(redis_key, films)
+
+        return films
+
+    async def _get_films_from_elastic(
+        self,
+        query: Dict[str, Any],
+        page_size: Optional[int] = None,
+        page_number: Optional[int] = None,
+        sort: Optional[str] = None,
+    ) -> List[Film]:
+        body: dict[str, Any] = {
+            "query": query,
+        }
+
+        if page_size:
+            body["size"] = page_size
+
+        if page_number and page_size:
+            body["from"] = (page_number - 1) * page_size
+
+        if sort is not None:
+            sort_field = sort.lstrip("-")
+            order = "desc" if sort.startswith("-") else "asc"
+            body["sort"] = [{sort_field: {"order": order}}]
+
+        response = await self.elastic.search(index=self.INDEX, body=body)
+
+        return [Film(**hit["_source"]) for hit in response["hits"]["hits"]]
+
+    async def _save_films_to_cache(self, redis_key: str, films: Iterable[Film]) -> None:
         await self.redis.set(
             redis_key,
             json.dumps([f.model_dump(mode="json") for f in films]),
@@ -132,6 +190,7 @@ class FilmService:
         cached_films = await self.redis.get(redis_key)
         if cached_films:
             return [Film.model_validate(item) for item in json.loads(cached_films)]
+
         return None
 
 

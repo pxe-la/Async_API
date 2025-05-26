@@ -10,7 +10,7 @@ from models.genre import Genre
 from redis.asyncio import Redis
 
 GENRE_CACHE_EXPIRE_IN_SECONDS = 60 * 5
-GENRE_LIST_CACHE_EXPIRE_IN_SECONDS = 1
+GENRE_LIST_CACHE_EXPIRE_IN_SECONDS = 60
 
 
 class GenreService:
@@ -28,11 +28,11 @@ class GenreService:
             return Genre.model_validate_json(cached_genre)
 
         try:
-            genre_doc = await self.elastic.get(index=self.INDEX, id=genre_id)
+            response = await self.elastic.get(index=self.INDEX, id=genre_id)
         except NotFoundError:
             return None
 
-        genre = Genre(**genre_doc["_source"])
+        genre = Genre(**response["_source"])
 
         await self.redis.set(
             redis_key,
@@ -44,8 +44,8 @@ class GenreService:
 
     async def list_genres(
         self,
-        page_size: int = 50,
-        page_number: int = 1,
+        page_size: int,
+        page_number: int,
     ) -> List[Genre]:
         redis_key = f"genres:list:{page_size}:{page_number}"
 
@@ -66,8 +66,9 @@ class GenreService:
         return genres
 
     async def _get_genres_from_elastic(self, body: Dict[str, Any]) -> List[Genre]:
-        docs = await self.elastic.search(index=self.INDEX, body=body)
-        return [Genre(**hit["_source"]) for hit in docs["hits"]["hits"]]
+        response = await self.elastic.search(index=self.INDEX, body=body)
+
+        return [Genre(**hit["_source"]) for hit in response["hits"]["hits"]]
 
     async def _save_genres_to_cache(self, redis_key: str, genres: List[Genre]) -> None:
         await self.redis.set(
@@ -80,6 +81,7 @@ class GenreService:
         cached_genres = await self.redis.get(redis_key)
         if cached_genres:
             return [Genre.model_validate(item) for item in json.loads(cached_genres)]
+
         return None
 
 

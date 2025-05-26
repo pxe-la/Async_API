@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from api.v1 import films, genres
+from api.v1 import films, genres, persons
 from core import config
 from db.elastic import close_elastic, init_elastic
 from db.redis import close_redis, init_redis
@@ -32,3 +32,4 @@ app = FastAPI(
 
 app.include_router(films.router, prefix="/api/v1/films", tags=["films"])
 app.include_router(genres.router, prefix="/api/v1/genres", tags=["genres"])
+app.include_router(persons.router, prefix="/api/v1/persons", tags=["persons"])
