@@ -56,23 +56,21 @@ class FilmService:
 
         films = await self._get_films_from_elastic(
             {
-                "query": {
-                    "multi_match": {
-                        "query": query,
-                        "fields": [
-                            "title^3",
-                            "description",
-                            "genres_names",
-                            "actors_names",
-                            "directors_names",
-                            "writers_names",
-                        ],
-                        "fuzziness": "AUTO",
-                    },
+                "multi_match": {
+                    "query": query,
+                    "fields": [
+                        "title^3",
+                        "description",
+                        "genres_names",
+                        "actors_names",
+                        "directors_names",
+                        "writers_names",
+                    ],
+                    "fuzziness": "AUTO",
                 },
-                "from": (page_number - 1) * page_size,
-                "size": page_size,
             },
+            page_size=page_size,
+            page_number=page_number,
         )
 
         await self._save_films_to_cache(redis_key, films)
@@ -92,34 +90,94 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        sort_field = sort.lstrip("-")
-        order = "desc" if sort.startswith("-") else "asc"
-
         films = await self._get_films_from_elastic(
-            {
-                "query": (
-                    {"match_all": {}}
-                    if genre_id is None
-                    else {
-                        "nested": {
-                            "path": "genres",
-                            "query": {"term": {"genres.id": genre_id}},
-                        }
+            (
+                {"match_all": {}}
+                if genre_id is None
+                else {
+                    "nested": {
+                        "path": "genres",
+                        "query": {"term": {"genres.id": genre_id}},
                     }
-                ),
-                "sort": [{sort_field: {"order": order}}],
-                "from": (page_number - 1) * page_size,
-                "size": page_size,
-            },
+                }
+            ),
+            page_size=page_size,
+            page_number=page_number,
+            sort=sort,
         )
 
         await self._save_films_to_cache(redis_key, films)
 
         return films
 
-    async def _get_films_from_elastic(self, body: Dict[str, Any]) -> List[Film]:
-        docs = await self.elastic.search(index=self.INDEX, body=body)
-        return [Film(**hit["_source"]) for hit in docs["hits"]["hits"]]
+    async def get_films_with_person(
+        self,
+        person_id: str,
+        sort: str = "imdb_rating",
+    ) -> List[Film]:
+        redis_key = f"person:{person_id}:roles"
+
+        cached_films = await self._get_films_from_cache(redis_key)
+        if cached_films:
+            return cached_films
+
+        films = await self._get_films_from_elastic(
+            {
+                "bool": {
+                    "should": [
+                        {
+                            "nested": {
+                                "path": "actors",
+                                "query": {"term": {"actors.id": person_id}},
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "directors",
+                                "query": {"term": {"directors.id": person_id}},
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "writers",
+                                "query": {"term": {"writers.id": person_id}},
+                            }
+                        },
+                    ]
+                }
+            },
+            sort=sort,
+        )
+
+        await self._save_films_to_cache(redis_key, films)
+
+        return films
+
+    async def _get_films_from_elastic(
+        self,
+        query: Dict[str, Any],
+        page_size: Optional[int] = None,
+        page_number: Optional[int] = None,
+        sort: Optional[str] = None,
+    ) -> List[Film]:
+        body: dict[str, Any] = {
+            "query": query,
+        }
+
+        if page_size:
+            body["size"] = page_size
+
+        if page_number and page_size:
+            body["from"] = (page_number - 1) * page_size
+
+        if sort is not None:
+            sort_field = sort.lstrip("-")
+            order = "desc" if sort.startswith("-") else "asc"
+            body["sort"] = [{sort_field: {"order": order}}]
+
+        response = await self.elastic.search(index=self.INDEX, body=body)
+
+        return [Film(**hit["_source"]) for hit in response["hits"]["hits"]]
 
     async def _save_films_to_cache(self, redis_key: str, films: Iterable[Film]) -> None:
         await self.redis.set(
