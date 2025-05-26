@@ -1,6 +1,6 @@
 from enum import StrEnum
 from http import HTTPStatus
-from typing import Annotated, Iterable, List, Optional
+from typing import Annotated, Iterable, List
 from uuid import UUID
 
 from api.v1.films import FilmItemResponse
@@ -28,24 +28,16 @@ class PersonDetailsResponseFilms(BaseModel):
     def from_models(cls, person: Person, film: Film) -> "PersonDetailsResponseFilms":
         roles = [
             role
-            for role, persons in [
+            for role, film_persons in [
                 (RoleName.ACTOR, film.actors),
                 (RoleName.DIRECTOR, film.directors),
                 (RoleName.WRITER, film.writers),
             ]
-            if cls._find_id_in_persons(persons, person.id) is not None
+            if any(film_person.id == person.id for film_person in film_persons)
+            is not None
         ]
 
         return cls(uuid=film.id, roles=roles)
-
-    @classmethod
-    def _find_id_in_persons(
-        cls, persons: list[Person], person_id: UUID
-    ) -> Optional[Person]:
-        for person in persons:
-            if person.id == person_id:
-                return person
-        return None
 
 
 class PersonResponse(BaseModel):
