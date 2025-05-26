@@ -37,5 +37,8 @@ if __name__ == "__main__":
         genres = postgres_producer.get_modified_genres()
         count += elastic_loader.load(genres, "genres")
 
+        persons = postgres_producer.get_modified_persons()
+        count += elastic_loader.load(persons, "persons")
+
         if count == 0:
             time.sleep(1)

@@ -27,6 +27,7 @@ class ElasticSearchLoader:
     def create_indexes(self) -> None:
         self.create_index("resources/movie_index.json", "movies")
         self.create_index("resources/genre_index.json", "genres")
+        self.create_index("resources/person_index.json", "persons")
 
     def __init__(self, api_url: str):
         self.base_url = api_url  # noqa: E231
