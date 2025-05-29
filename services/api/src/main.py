@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 from api.v1 import films, genres, persons
-from core import config
+from core.config import settings
 from db.elastic import close_elastic, init_elastic
 from db.redis import close_redis, init_redis
 from elasticsearch import AsyncElasticsearch
@@ -12,8 +12,8 @@ from redis.asyncio import Redis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_redis(Redis(host=config.REDIS_HOST, port=config.REDIS_PORT))
-    init_elastic(AsyncElasticsearch(hosts=[config.ES_URL]))
+    init_redis(Redis(host=settings.redis_host, port=settings.redis_port))
+    init_elastic(AsyncElasticsearch(hosts=[settings.es_url]))
 
     yield
 
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=config.PROJECT_NAME,
+    title=settings.project_name,
     docs_url="/api/openapi",
     openapi_url="/api/openapi.json",
     default_response_class=ORJSONResponse,

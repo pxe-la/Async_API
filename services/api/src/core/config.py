@@ -1,20 +1,26 @@
-import os
 from logging import config as logging_config
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .logger import LOGGING
 
-# Применяем настройки логирования
 logging_config.dictConfig(LOGGING)
 
-# Название проекта. Используется в Swagger-документации
-PROJECT_NAME = os.getenv("PROJECT_NAME", "movies")
+dotenv_path = "../../.env"
 
-# Настройки Redis
-REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
-# Настройки Elasticsearch
-ES_URL = os.getenv("ES_URL", "http://127.0.0.1:9200")
+# Валидирует настройки из .env
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    project_name: str = "Theater API"
+    postgres_user: str
+    postgres_password: str
+    postgres_db: str
+    postgres_host: str
+    postgres_port: str
+    es_url: str
+    redis_host: str
+    redis_port: str
 
-# Корень проекта
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+settings = Settings(_env_file=dotenv_path, _env_file_encoding="utf-8")  # type: ignore
