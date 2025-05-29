@@ -18,6 +18,7 @@ RUN  poetry install --only main
 COPY . .
 
 RUN chmod +x entrypoint.sh
+RUN chmod +x tests/functional/entrypoint.sh
 
 EXPOSE 8000
 

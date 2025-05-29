@@ -1,0 +1,14 @@
+version: '3'
+services:
+  api:
+    ports:
+      - "8000:8000"
+  redis:
+    ports:
+      - "6379:6379"
+
+  elasticsearch:
+    ports:
+      - "9200:9200"
+    environment:
+      - ES_JAVA_OPTS=-Xms200m -Xmx200m
