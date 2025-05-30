@@ -5,9 +5,9 @@ from elasticsearch import Elasticsearch
 
 if __name__ == "__main__":
     es_url = os.getenv("ES_URL", "http://localhost:9200")
-    es_client = Elasticsearch(hosts=es_url)
+    es_client = Elasticsearch(es_url)
+    res = es_client.info()
     while True:
         if es_client.ping():
             break
-        print("Ping elastic attempt: ", es_url)
         time.sleep(1)
