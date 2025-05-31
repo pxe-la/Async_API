@@ -1,10 +1,10 @@
-from pydantic import Field
+import os
+
 from pydantic_settings import BaseSettings
 
 
 class TestSettings(BaseSettings):
-    es_host: str = Field("http://127.0.0.1:9200",
-                         env="ELASTIC_HOST")
+    es_host: str = os.getenv("ES_URL", "http://127.0.0.1:9200")
     es_index: str = "movies"
     es_id_field: str = "id"
     es_index_mapping: dict = {
@@ -142,10 +142,8 @@ class TestSettings(BaseSettings):
         }
     }
 
-    redis_host: str = Field("localhost",
-                            env="REDIS_HOST")
-    service_url: str = Field("http://127.0.0.1:8000",
-                             env="ES_URL")
+    redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    service_url: str = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 
 test_settings = TestSettings()
