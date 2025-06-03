@@ -143,6 +143,7 @@ class TestSettings(BaseSettings):
     }
 
     redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    redis_port: str = os.getenv("REDIS_PORT", "6379")
     service_url: str = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 
