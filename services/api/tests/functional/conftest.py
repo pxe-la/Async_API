@@ -6,7 +6,7 @@ import pytest_asyncio
 from elasticsearch import AsyncElasticsearch
 from redis.asyncio import Redis
 
-from tests.functional.settings import test_settings
+from tests.functional.settings import default_settings
 
 
 @pytest_asyncio.fixture(scope='session')
@@ -18,15 +18,15 @@ def _function_event_loop():
 
 @pytest_asyncio.fixture(name="redis_client", scope="session")
 async def redis_client():
-    redis_client = Redis(host=test_settings.redis_host,
-                         port=test_settings.redis_port)
+    redis_client = Redis(host=default_settings.redis_host,
+                         port=default_settings.redis_port)
     yield redis_client
     await redis_client.close()
 
 
 @pytest_asyncio.fixture(name="es_client", scope="session")
 async def es_client():
-    es_client = AsyncElasticsearch(hosts=test_settings.es_host,
+    es_client = AsyncElasticsearch(hosts=default_settings.es_host,
                                    verify_certs=False)
     yield es_client
     await es_client.close()
@@ -42,7 +42,7 @@ async def client_http_session():
 @pytest_asyncio.fixture(name="make_get_request")
 async def make_get_request(client_http_session):
     async def inner(url, query_data):
-        full_url = test_settings.service_url + "/" + url
+        full_url = default_settings.service_url + "/" + url
 
         async with client_http_session.get(full_url,
                                            params=query_data) as response:

@@ -1,9 +1,18 @@
+import json
 import uuid
 import pytest
 import pytest_asyncio
 from elasticsearch.helpers import async_bulk
 
-from tests.functional.settings import test_settings
+from tests.functional.settings import TestSettings
+
+with open("resources/movie_index.json", "r") as f:
+    index_mapping = json.load(f)
+
+test_settings = TestSettings(
+    es_index="movies",
+    es_index_mapping=index_mapping
+)
 
 
 @pytest_asyncio.fixture(name="es_data")
