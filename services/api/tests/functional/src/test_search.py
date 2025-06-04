@@ -1,60 +1,9 @@
-import json
 import uuid
-import asyncio
-import aiohttp
 import pytest
 import pytest_asyncio
-from elasticsearch import AsyncElasticsearch
 from elasticsearch.helpers import async_bulk
-from redis.asyncio import Redis
 
 from tests.functional.settings import test_settings
-
-
-@pytest_asyncio.fixture(scope='session')
-def _function_event_loop():
-    loop = asyncio.get_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(name="redis_client", scope="session")
-async def redis_client():
-    redis_client = Redis(host=test_settings.redis_host,
-                         port=test_settings.redis_port)
-    yield redis_client
-    await redis_client.close()
-
-
-@pytest_asyncio.fixture(name="es_client", scope="session")
-async def es_client():
-    es_client = AsyncElasticsearch(hosts=test_settings.es_host,
-                                   verify_certs=False)
-    yield es_client
-    await es_client.close()
-
-
-@pytest_asyncio.fixture(name="client_http_session", scope="session")
-async def client_http_session():
-    session = aiohttp.ClientSession()
-    yield session
-    await session.close()
-
-
-@pytest_asyncio.fixture(name="make_get_request")
-async def make_get_request(client_http_session):
-    async def inner(url, query_data):
-        full_url = test_settings.service_url + "/" + url
-
-        async with client_http_session.get(full_url,
-                                           params=query_data) as response:
-            response_dict = {
-                "body": await response.json(),
-                "status": response.status
-            }
-        return response_dict
-
-    return inner
 
 
 @pytest_asyncio.fixture(name="es_data")
@@ -112,19 +61,6 @@ async def es_write_data(es_client):
     return inner
 
 
-@pytest_asyncio.fixture(name="get_redis_cache")
-async def get_redis_cache(redis_client):
-    async def inner(query_data: dict[str, str]):
-        search = query_data.get("query", "")
-        page_size = query_data.get("page_size", 50)
-        page = query_data.get("page", 1)
-        data = await redis_client.get(
-            f"film:search:{search}:{page_size}:{page}")
-        return json.loads(data)
-
-    return inner
-
-
 @pytest.mark.parametrize(
     "query_data, expected_answer",
     [
@@ -154,7 +90,7 @@ async def test_search(get_redis_cache, make_get_request, es_write_data,
     await es_write_data(es_data)
 
     response = await make_get_request("api/v1/films/search", query_data)
-    cache = await get_redis_cache(query_data)
+    cache = await get_redis_cache("film", "search", query_data)
 
     cache_ids = set([obj["id"] for obj in cache])
     response_ids = set([obj["uuid"] for obj in response["body"]])
