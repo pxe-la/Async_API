@@ -4,8 +4,7 @@ services:
       profiles: ["not-dev"]
 
   api:
-    ports:
-      - "8000:8000"
+    profiles: [ "not-dev" ]
 
   theatre-db:
     ports:
