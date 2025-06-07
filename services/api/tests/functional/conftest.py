@@ -5,11 +5,10 @@ import aiohttp
 import pytest_asyncio
 from elasticsearch import AsyncElasticsearch
 from redis.asyncio import Redis
-
 from tests.functional.settings import default_settings
 
 
-@pytest_asyncio.fixture(scope='session')
+@pytest_asyncio.fixture(scope="session")
 def _function_event_loop():
     loop = asyncio.get_event_loop()
     yield loop
@@ -18,16 +17,16 @@ def _function_event_loop():
 
 @pytest_asyncio.fixture(name="redis_client", scope="session")
 async def redis_client():
-    redis_client = Redis(host=default_settings.redis_host,
-                         port=default_settings.redis_port)
+    redis_client = Redis(
+        host=default_settings.redis_host, port=default_settings.redis_port
+    )
     yield redis_client
     await redis_client.close()
 
 
 @pytest_asyncio.fixture(name="es_client", scope="session")
 async def es_client():
-    es_client = AsyncElasticsearch(hosts=default_settings.es_host,
-                                   verify_certs=False)
+    es_client = AsyncElasticsearch(hosts=default_settings.es_host, verify_certs=False)
     yield es_client
     await es_client.close()
 
@@ -44,12 +43,8 @@ async def make_get_request(client_http_session):
     async def inner(url, query_data):
         full_url = default_settings.service_url + "/" + url
 
-        async with client_http_session.get(full_url,
-                                           params=query_data) as response:
-            response_dict = {
-                "body": await response.json(),
-                "status": response.status
-            }
+        async with client_http_session.get(full_url, params=query_data) as response:
+            response_dict = {"body": await response.json(), "status": response.status}
         return response_dict
 
     return inner
@@ -61,8 +56,7 @@ async def get_redis_cache(redis_client):
         search = query_data.get("query", "")
         page_size = query_data.get("page_size", 50)
         page = query_data.get("page_number", 1)
-        data = await redis_client.get(
-            f"{index}:{method}:{search}:{page_size}:{page}")
+        data = await redis_client.get(f"{index}:{method}:{search}:{page_size}:{page}")
         print(f"{index}:{method}:{search}:{page_size}:{page}")
         return json.loads(data)
 
