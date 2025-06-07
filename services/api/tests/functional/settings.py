@@ -1,6 +1,12 @@
 import os
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+
+if os.path.exists("local.tests.env"):
+    load_dotenv("local.tests.env")
+else:
+    load_dotenv("tests.env")
 
 
 class TestSettings(BaseSettings):
