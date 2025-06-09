@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 
@@ -10,7 +11,6 @@ with open("resources/genre_index.json", "r") as f:
     index_mapping = json.load(f)
 
 test_settings = TestSettings(es_index="genres", es_index_mapping=index_mapping)
-
 
 @pytest_asyncio.fixture(name="es_data")
 async def es_data():
@@ -85,17 +85,16 @@ async def test_genres_list(
     cache_ids = set([obj["id"] for obj in cache])
     response_ids = set([obj["uuid"] for obj in response["body"]])
 
-    # Проверка кэша
     assert cache_ids == response_ids
-    # Статус код
+
     assert response["status"] == expected_answer["status"]
-    # Количетсво объектов
+
     assert len(response["body"]) == expected_answer["length"]
 
 
 @pytest.mark.asyncio
 async def test_genres_detail_200(
-    get_redis_cache, make_get_request, es_write_data, es_data
+    get_redis_cache, make_get_request, es_write_data, es_data, es_client
 ):
     await es_write_data(es_data)
     response = await make_get_request("api/v1/genres/", {})
@@ -103,5 +102,9 @@ async def test_genres_detail_200(
     obj_uuid = obj["uuid"]
 
     response_2 = await make_get_request(f"api/v1/genres/{obj_uuid}", {})
+
+    cache_obj = await get_redis_cache(f"genre:{obj_uuid}")
+
     assert response_2["status"] == 200
-    print(response_2["body"])
+    assert response_2["body"] == obj
+    assert cache_obj["id"] == obj["uuid"]
