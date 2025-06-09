@@ -15,12 +15,13 @@ def _function_event_loop():
     loop.close()
 
 
-@pytest_asyncio.fixture(name="redis_client", scope="session")
+@pytest_asyncio.fixture(name="redis_client", scope="function")
 async def redis_client():
     redis_client = Redis(
         host=default_settings.redis_host, port=default_settings.redis_port
     )
     yield redis_client
+    await redis_client.flushdb()
     await redis_client.close()
 
 
