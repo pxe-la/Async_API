@@ -52,12 +52,8 @@ async def make_get_request(client_http_session):
 
 @pytest_asyncio.fixture(name="get_redis_cache")
 async def get_redis_cache(redis_client):
-    async def inner(index: str, method: str, query_data: dict[str, str]):
-        search = query_data.get("query", "")
-        page_size = query_data.get("page_size", 50)
-        page = query_data.get("page_number", 1)
-        data = await redis_client.get(f"{index}:{method}:{search}:{page_size}:{page}")
-        print(f"{index}:{method}:{search}:{page_size}:{page}")
+    async def inner(cache_key):
+        data = await redis_client.get(cache_key)
         return json.loads(data)
 
     return inner
