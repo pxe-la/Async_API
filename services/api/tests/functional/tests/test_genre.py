@@ -9,16 +9,8 @@ with open("resources/es_genres_mapping.json", "r") as f:
     index_mapping = json.load(f)
 
 
-@pytest_asyncio.fixture(scope="module")
-async def es_movies_asset():
-    with open("assets/es_genres.json", "r") as film_file:
-        movies = json.load(film_file)
-
-    return movies
-
-
 @pytest_asyncio.fixture(scope="module", autouse=True)
-async def seed_es(es_fill_index, es_movies_asset):
+async def seed_es(es_fill_index, es_genres_asset):
 
     index_data = [
         {
@@ -27,7 +19,7 @@ async def seed_es(es_fill_index, es_movies_asset):
             "_id": movie["id"],
             "_source": movie,
         }
-        for movie in es_movies_asset
+        for movie in es_genres_asset
     ]
 
     await es_fill_index(index_name, index_mapping, index_data)

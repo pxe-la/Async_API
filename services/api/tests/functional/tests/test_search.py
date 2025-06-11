@@ -1,19 +1,10 @@
 import json
 
 import pytest
-import pytest_asyncio
 
 index_name = "movies"
 with open("resources/es_movies_mapping.json", "r") as f:
     index_mapping = json.load(f)
-
-
-@pytest_asyncio.fixture(scope="module")
-async def es_movies_asset():
-    with open("assets/es_movies.json", "r") as film_file:
-        movies = json.load(film_file)
-
-    return movies
 
 
 @pytest.mark.skip(reason="Not ready")

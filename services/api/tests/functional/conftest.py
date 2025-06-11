@@ -2,6 +2,7 @@ import asyncio
 
 import pytest_asyncio
 from fixtures.api import *  # noqa: F401, F403
+from fixtures.assets import *  # noqa: F401, F403
 from fixtures.es import *  # noqa: F401, F403
 from fixtures.redis import *  # noqa: F401, F403
 
