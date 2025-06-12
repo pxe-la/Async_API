@@ -10,6 +10,7 @@ from models.film import Film
 from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
+from .storage import FilmElasticSearchService, StorageServiceProtocol
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 60
@@ -53,7 +54,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        films = await self._get_films_from_elastic(
+        films = await self.elastic.search(
             {
                 "multi_match": {
                     "query": query,
@@ -88,7 +89,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        films = await self._get_films_from_elastic(
+        films = await self.elastic.search(
             (
                 {"match_all": {}}
                 if genre_id is None
@@ -116,7 +117,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        films = await self._get_films_from_elastic(
+        films = await self.elastic.search(
             {
                 "bool": {
                     "should": [
@@ -145,32 +146,6 @@ class FilmService:
         )
         await self._save_films_to_cache(cache_key, films)
         return films
-
-    async def _get_films_from_elastic(
-        self,
-        query: Dict[str, Any],
-        page_size: Optional[int] = None,
-        page_number: Optional[int] = None,
-        sort: Optional[str] = None,
-    ) -> List[Film]:
-        body: dict[str, Any] = {
-            "query": query,
-        }
-
-        if page_size:
-            body["size"] = page_size
-
-        if page_number and page_size:
-            body["from"] = (page_number - 1) * page_size
-
-        if sort is not None:
-            sort_field = sort.lstrip("-")
-            order = "desc" if sort.startswith("-") else "asc"
-            body["sort"] = [{sort_field: {"order": order}}]
-
-        response = await self.elastic.search(index=self.INDEX, body=body)
-
-        return [Film(**hit["_source"]) for hit in response["hits"]["hits"]]
 
     def _get_film_cache_key(self, film_id: str) -> str:
         return f"film:{film_id}"
@@ -206,7 +181,8 @@ class FilmService:
 @lru_cache()
 def get_film_service(
     redis: Annotated[Redis, Depends(get_redis)],
-    elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
+    elastic: Annotated[StorageServiceProtocol, Depends(get_elastic)],
 ) -> FilmService:
     cache = RedisCacheService(redis)
-    return FilmService(cache, elastic)
+    elastic_service = FilmElasticSearchService(elastic)
+    return FilmService(cache, elastic_service)
