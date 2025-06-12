@@ -12,7 +12,7 @@ async def client_http_session():
 
 @pytest_asyncio.fixture
 async def make_get_request(client_http_session):
-    async def inner(url, query_data):
+    async def inner(url, query_data=None):
         full_url = settings.service_url + "/" + url
 
         async with client_http_session.get(full_url, params=query_data) as response:
