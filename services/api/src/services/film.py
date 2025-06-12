@@ -28,18 +28,9 @@ class FilmElasticSearchService(BaseElasticsearchService):
     ) -> list[dict]:
         body: dict[str, Any] = {
             "query": query,
+            "size": page_size,
+            "from": (page_number - 1) * page_size,
         }
-
-        if page_size:
-            body["size"] = page_size
-
-        if page_number and page_size:
-            body["from"] = (page_number - 1) * page_size
-
-        if sort is not None:
-            sort_field = sort.lstrip("-")
-            order = "desc" if sort.startswith("-") else "asc"
-            body["sort"] = [{sort_field: {"order": order}}]
 
         response = await self.elastic.search(index=resource, body=body)
 
