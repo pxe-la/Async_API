@@ -149,16 +149,14 @@ class FilmService:
     async def _get_films_from_elastic(
         self,
         query: Dict[str, Any],
-        page_size: Optional[int] = None,
+        page_size: Optional[int] = 10000,
         page_number: Optional[int] = None,
         sort: Optional[str] = None,
     ) -> List[Film]:
         body: dict[str, Any] = {
             "query": query,
+            "size": page_size,
         }
-
-        if page_size:
-            body["size"] = page_size
 
         if page_number and page_size:
             body["from"] = (page_number - 1) * page_size
