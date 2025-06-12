@@ -1,6 +1,6 @@
 import json
 from functools import lru_cache
-from typing import Annotated, Iterable, List, Optional
+from typing import Annotated, Any, Iterable, List, Optional
 
 from db.elastic import get_elastic
 from db.redis import get_redis
@@ -10,10 +10,40 @@ from models.film import Film
 from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
-from .storage import FilmElasticSearchService, StorageServiceProtocol
+from .storage import BaseElasticsearchService, StorageServiceProtocol
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 60
+
+
+class FilmElasticSearchService(BaseElasticsearchService):
+    async def search(  # type: ignore[override]
+        self,
+        resource: str,
+        query: dict[str, Any],
+        page_size: int = 50,
+        page_number: int = 1,
+        sort: Optional[str] = None,
+        **kwargs: Any,
+    ) -> list[dict]:
+        body: dict[str, Any] = {
+            "query": query,
+        }
+
+        if page_size:
+            body["size"] = page_size
+
+        if page_number and page_size:
+            body["from"] = (page_number - 1) * page_size
+
+        if sort is not None:
+            sort_field = sort.lstrip("-")
+            order = "desc" if sort.startswith("-") else "asc"
+            body["sort"] = [{sort_field: {"order": order}}]
+
+        response = await self.elastic.search(index=resource, body=body)
+
+        return response["hits"]["hits"]
 
 
 class FilmService:
