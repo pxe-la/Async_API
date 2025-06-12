@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -66,7 +66,7 @@ class FilmDetailResponse(BaseModel):
 )
 async def list_films(
     film_service: Annotated[FilmService, Depends(get_film_service)],
-    sort: str = Query(
+    sort: Literal["imdb_rating", "-imdb_rating"] = Query(
         "-imdb_rating",
         examples=["-imdb_rating", "imdb_rating"],
         description="Name to sort by with '-' for DESC).",

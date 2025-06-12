@@ -4,7 +4,12 @@ services:
       profiles: ["not-dev"]
 
   api:
-    profiles: [ "not-dev" ]
+    profiles: [ "not-dev", "api", "api-etl" ]
+    ports:
+      - "8000:8000"
+
+  etl:
+    profiles: [ "etl", "api-etl" ]
 
   theatre-db:
     ports:
