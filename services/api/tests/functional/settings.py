@@ -1,6 +1,7 @@
 import os
 
 from dotenv import load_dotenv
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 if os.path.exists("local.tests.env"):
@@ -9,25 +10,13 @@ else:
     load_dotenv("tests.env")
 
 
-def get_required_env(name: str) -> str:
-    value = os.getenv(name)
-    if value is None:
-        raise ValueError(f"Environment variable {name} is not set")
-
-    return value
-
-
 class TestSettings(BaseSettings):
-    es_host: str = get_required_env("ES_URL")
+    es_url: str = Field(alias="ES_URL")
 
-    redis_host: str = get_required_env("REDIS_HOST")
-    redis_port: str = get_required_env("REDIS_PORT")
+    redis_host: str = Field(alias="REDIS_HOST")
+    redis_port: str = Field(alias="REDIS_PORT")
 
-    service_url: str = get_required_env("API_URL")
-
-    es_index: str
-    es_index_mapping: dict
+    service_url: str = Field(alias="API_URL")
 
 
-# Экземпляр, который содержит настройки по умолчанию. Для фикстур в conftest.py
-default_settings = TestSettings(es_index="", es_index_mapping={})
+settings = TestSettings()
