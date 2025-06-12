@@ -1,48 +1,31 @@
 import json
 from functools import lru_cache
-from typing import Annotated, Any, Iterable, List, Optional
+from typing import Annotated, Iterable, List, Optional
 
 from db.elastic import get_elastic
 from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from models.film import Film
 from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
-from .storage import BaseElasticsearchService, StorageServiceProtocol
+from .elastic_storage import ElasticsearchStorageService
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 60
 
 
-class FilmElasticSearchService(BaseElasticsearchService):
-    async def search(  # type: ignore[override]
-        self,
-        resource: str,
-        query: dict[str, Any],
-        page_size: int,
-        page_number: int,
-        sort: Optional[str] = None,
-        **kwargs: Any,
-    ) -> list[dict]:
-        body: dict[str, Any] = {
-            "query": query,
-            "size": page_size,
-            "from": (page_number - 1) * page_size,
-        }
-
-        response = await self.elastic.search(index=resource, body=body)
-
-        return response["hits"]["hits"]
-
-
 class FilmService:
     INDEX = "movies"
 
-    def __init__(self, cache: CacheServiceProtocol, storage: StorageServiceProtocol):
+    def __init__(
+        self,
+        cache: CacheServiceProtocol,
+        elastic_storage_service: ElasticsearchStorageService,
+    ):
         self.cache = cache
-        self.storage = storage
+        self.elastic_storage = elastic_storage_service
 
     async def get_by_id(self, film_id: str) -> Optional[Film]:
         cache_key = self._get_film_cache_key(film_id)
@@ -50,7 +33,10 @@ class FilmService:
         if cached_film:
             return Film.model_validate_json(cached_film)
 
-        response = await self.storage.get(resource=self.INDEX, uuid=film_id)
+        try:
+            response = await self.elastic_storage.get(resource=self.INDEX, uuid=film_id)
+        except NotFoundError:
+            return None
 
         film = Film(**response)
         await self.cache.set(
@@ -72,7 +58,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        response = await self.storage.search(
+        response = await self.elastic_storage.search_raw_query(
             resource=self.INDEX,
             query={
                 "multi_match": {
@@ -91,7 +77,7 @@ class FilmService:
             page_size=page_size,
             page_number=page_number,
         )
-        films = [Film(**hit["_source"]) for hit in response]
+        films = [Film(**item) for item in response]
         await self._save_films_to_cache(cache_key, films)
         return films
 
@@ -109,7 +95,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        response = await self.storage.search(
+        response = await self.elastic_storage.search_raw_query(
             resource=self.INDEX,
             query=(
                 {"match_all": {}}
@@ -125,7 +111,7 @@ class FilmService:
             page_number=page_number,
             sort=sort,
         )
-        films = [Film(**hit["_source"]) for hit in response]
+        films = [Film(**item) for item in response]
         await self._save_films_to_cache(cache_key, films)
         return films
 
@@ -141,7 +127,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        response = await self.storage.search(
+        response = await self.elastic_storage.search_raw_query(
             resource=self.INDEX,
             query={
                 "bool": {
@@ -171,7 +157,7 @@ class FilmService:
             page_number=page_number,
             sort=sort,
         )
-        films = [Film(**hit["_source"]) for hit in response]
+        films = [Film(**item) for item in response]
         await self._save_films_to_cache(cache_key, films)
         return films
 
@@ -212,5 +198,5 @@ def get_film_service(
     elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
 ) -> FilmService:
     cache = RedisCacheService(redis)
-    elastic_service = FilmElasticSearchService(elastic)
-    return FilmService(cache, elastic_service)
+    elastic_storage_service = ElasticsearchStorageService(elastic)
+    return FilmService(cache, elastic_storage_service)

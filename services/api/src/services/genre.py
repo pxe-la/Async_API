@@ -4,13 +4,14 @@ from typing import Annotated, List, Optional
 
 from db.elastic import get_elastic
 from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from models.genre import Genre
 from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
-from .storage import BaseElasticsearchService, StorageServiceProtocol
+from .elastic_storage import ElasticsearchStorageService
+from .storage import StorageServiceProtocol
 
 GENRE_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 GENRE_LIST_CACHE_EXPIRE_IN_SECONDS = 60
@@ -29,7 +30,10 @@ class GenreService:
         if cached_genre:
             return Genre.model_validate_json(cached_genre)
 
-        response = await self.storage.get(resource=self.INDEX, uuid=genre_id)
+        try:
+            response = await self.storage.get(resource=self.INDEX, uuid=genre_id)
+        except NotFoundError:
+            return None
 
         genre = Genre(**response)
         await self.cache.set(
@@ -54,7 +58,7 @@ class GenreService:
             resource=self.INDEX, page_size=page_size, page_number=page_number
         )
 
-        genres = [Genre(**hit) for hit in response]
+        genres = [Genre(**item) for item in response]
         await self._save_genres_to_cache(cache_key, genres)
 
         return genres
@@ -86,5 +90,5 @@ def get_genre_service(
     elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
 ) -> GenreService:
     cache = RedisCacheService(redis)
-    elastic_service = BaseElasticsearchService(elastic)
+    elastic_service = ElasticsearchStorageService(elastic)
     return GenreService(cache, elastic_service)

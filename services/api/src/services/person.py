@@ -4,13 +4,14 @@ from typing import Annotated, Any, Optional  # noqa:
 
 from db.elastic import get_elastic
 from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from models.person import Person
 from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
-from .storage import BaseElasticsearchService, StorageServiceProtocol
+from .elastic_storage import ElasticsearchStorageService
+from .storage import StorageServiceProtocol
 
 PERSON_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 PERSON_LIST_CACHE_EXPIRE_IN_SECONDS = 60
@@ -29,7 +30,10 @@ class PersonService:
         if cached_person:
             return Person.model_validate_json(cached_person)
 
-        response = await self.storage.get(resource=self.INDEX, uuid=person_id)
+        try:
+            response = await self.storage.get(resource=self.INDEX, uuid=person_id)
+        except NotFoundError:
+            return None
 
         person = Person(**response)
         await self.cache.set(
@@ -48,11 +52,14 @@ class PersonService:
         if cached_persons:
             return [Person.model_validate_json(p) for p in json.loads(cached_persons)]
 
-        response = await self.storage.search(
-            resource=self.INDEX, page_size=page_size, page_number=page_number, name=name
+        response = await self.storage.search_by_text_fields(
+            resource=self.INDEX,
+            page_size=page_size,
+            page_number=page_number,
+            fields={"name": name},
         )
 
-        persons = [Person(**hit) for hit in response]
+        persons = [Person(**item) for item in response]
         await self.cache.set(
             cache_key,
             json.dumps([p.model_dump_json() for p in persons]),
@@ -76,5 +83,5 @@ def get_person_service(
     elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
 ) -> PersonService:
     cache = RedisCacheService(redis)
-    elastic_service = BaseElasticsearchService(elastic)
+    elastic_service = ElasticsearchStorageService(elastic)
     return PersonService(cache, elastic_service)
