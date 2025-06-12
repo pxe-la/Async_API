@@ -11,18 +11,7 @@ with open("resources/es_genres_mapping.json", "r") as f:
 
 @pytest_asyncio.fixture(scope="module", autouse=True)
 async def seed_es(es_fill_index, es_genres_asset):
-
-    index_data = [
-        {
-            "_op_type": "index",
-            "_index": index_name,
-            "_id": movie["id"],
-            "_source": movie,
-        }
-        for movie in es_genres_asset
-    ]
-
-    await es_fill_index(index_name, index_mapping, index_data)
+    await es_fill_index(index_name, index_mapping, es_genres_asset)
 
 
 @pytest_asyncio.fixture
@@ -87,11 +76,11 @@ async def test_genres_list(
 
 @pytest.mark.asyncio
 async def test_genres_detail_200(get_redis_cache, make_get_request, es_client):
-    response = await make_get_request("api/v1/genres/", {})
+    response = await make_get_request("api/v1/genres/")
     obj = response["body"][0]
     obj_uuid = obj["uuid"]
 
-    response_2 = await make_get_request(f"api/v1/genres/{obj_uuid}", {})
+    response_2 = await make_get_request(f"api/v1/genres/{obj_uuid}")
 
     cache_obj = await get_redis_cache(f"genre:{obj_uuid}")
 

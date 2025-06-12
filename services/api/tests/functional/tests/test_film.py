@@ -13,18 +13,7 @@ with open("resources/es_movies_mapping.json", "r") as f:
 
 @pytest_asyncio.fixture(scope="module", autouse=True)
 async def seed_es(es_fill_index, es_movies_asset):
-
-    index_data = [
-        {
-            "_op_type": "index",
-            "_index": index_name,
-            "_id": movie["id"],
-            "_source": movie,
-        }
-        for movie in es_movies_asset
-    ]
-
-    await es_fill_index(index_name, index_mapping, index_data)
+    await es_fill_index(index_name, index_mapping, es_movies_asset)
 
 
 @pytest.mark.parametrize(
@@ -39,7 +28,7 @@ async def seed_es(es_fill_index, es_movies_asset):
 async def test_get_film_by_id(es_movies_asset, make_get_request, uuid):
     expected_movie = next(movie for movie in es_movies_asset if movie["id"] == uuid)
 
-    response = await make_get_request(f"api/v1/films/{expected_movie['id']}", {})
+    response = await make_get_request(f"api/v1/films/{uuid}")
 
     assert response["status"] == HTTPStatus.OK
 
@@ -68,7 +57,7 @@ async def test_get_film_by_id(es_movies_asset, make_get_request, uuid):
 
 @pytest.mark.asyncio
 async def test_get_non_existent_film_by_id(make_get_request):
-    response = await make_get_request(f"api/v1/films/{uuid4()}", {})
+    response = await make_get_request(f"api/v1/films/{uuid4()}")
 
     assert response["status"] == HTTPStatus.NOT_FOUND
     assert response["body"] == {"detail": "film not found"}

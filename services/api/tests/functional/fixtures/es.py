@@ -1,3 +1,5 @@
+from typing import Callable
+
 import pytest_asyncio
 from elasticsearch import AsyncElasticsearch
 from elasticsearch.helpers import async_bulk
@@ -13,12 +15,27 @@ async def es_client():
 
 @pytest_asyncio.fixture(scope="module")
 async def es_fill_index(es_client):
-    async def inner(index: str, mapping: dict, data: list[dict]):
+    async def inner(
+        index: str,
+        mapping: dict,
+        data: list[dict],
+        get_id: Callable[[dict], str] = lambda x: x["id"],
+    ):
+        index_data = (
+            {
+                "_op_type": "index",
+                "_index": index,
+                "_id": get_id(item),
+                "_source": item,
+            }
+            for item in data
+        )
+
         if await es_client.indices.exists(index=index):
             await es_client.indices.delete(index=index)
 
         await es_client.indices.create(index=index, **mapping)
-        _, errors = await async_bulk(client=es_client, actions=data)
+        _, errors = await async_bulk(client=es_client, actions=index_data)
         if errors:
             raise Exception("Ошибка записи данных в Elasticsearch")
 
