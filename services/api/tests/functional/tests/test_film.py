@@ -55,6 +55,31 @@ async def test_get_film_by_id(es_movies_asset, make_get_request, uuid):
     )
 
 
+@pytest.mark.parametrize(
+    "uuid",
+    [
+        "b1f1e8a6-e310-47d9-a93c-6a7b192bac0e",
+        "2dd036a4-f5d0-4e81-8073-a36da2a684b7",
+        "edc66eec-eda9-4541-af98-4ec4012a740d",
+    ],
+)
+@pytest.mark.parametrize("es_manager", index_name, indirect=True)
+@pytest.mark.asyncio
+async def test_films_by_id_cache(es_manager, make_get_request, uuid):
+    url = f"api/v1/films/{uuid}"
+
+    response1 = await make_get_request(url)
+
+    await es_manager.clean()
+
+    response2 = await make_get_request(url)
+
+    assert response1["status"] == HTTPStatus.OK
+    assert response2["status"] == HTTPStatus.OK
+    assert len(response1["body"]) > 0
+    assert response1["body"] == response2["body"]
+
+
 @pytest.mark.asyncio
 async def test_get_non_existent_film_by_id(make_get_request):
     response = await make_get_request(f"api/v1/films/{uuid4()}")
@@ -169,6 +194,10 @@ async def test_list_films_pagination_content(make_get_request):
     response2 = await make_get_request(url, {"page_size": 50, "page_number": 2})
     response3 = await make_get_request(url, {"page_size": 100, "page_number": 1})
 
+    assert len(response1["body"]) > 0
+    assert len(response2["body"]) > 0
+    assert len(response3["body"]) > 0
+
     assert (response1["body"] + response2["body"]) == response3["body"]
 
 
@@ -228,4 +257,5 @@ async def test_list_films_cache(es_manager, make_get_request, params):
 
     assert response1["status"] == HTTPStatus.OK
     assert response2["status"] == HTTPStatus.OK
+    assert len(response1["body"]) > 0
     assert response1["body"] == response2["body"]
