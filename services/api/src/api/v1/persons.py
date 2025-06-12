@@ -77,7 +77,7 @@ async def search_person_by_name(
 
     return [
         PersonResponse.from_models(
-            person, await film_service.get_films_with_person(str(person.id))
+            person, await film_service.get_films_with_person(str(person.id), 1000, 1)
         )
         for person in persons
     ]
@@ -93,7 +93,7 @@ async def get_person_films(
     film_service: Annotated[FilmService, Depends(get_film_service)],
     person_id: str,
 ) -> List[FilmItemResponse]:
-    films = await film_service.get_films_with_person(person_id)
+    films = await film_service.get_films_with_person(person_id, 1000, 1)
     if not films:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="No persons found")
 
@@ -113,7 +113,7 @@ async def get_person_by_id(
 ) -> PersonResponse:
     person = await person_service.get_by_id(person_id)
 
-    person_films = await film_service.get_films_with_person(person_id)
+    person_films = await film_service.get_films_with_person(person_id, 1000, 1)
 
     if not person:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="person not found")
