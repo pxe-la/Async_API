@@ -97,7 +97,16 @@ async def test_search(
     await es_write_data(es_data)
 
     response = await make_get_request("api/v1/films/search", query_data)
-    cache = await get_redis_cache("film", "search", query_data)
+
+    cache_key = "film:search"
+
+    page_size = query_data.get("page_size", "50")
+    cache_key += ":" + str(page_size)
+
+    page_number = query_data.get("page_number", "1")
+    cache_key += ":" + str(page_number)
+
+    cache = await get_redis_cache(cache_key)
 
     cache_ids = set([obj["id"] for obj in cache])
     response_ids = set([obj["uuid"] for obj in response["body"]])

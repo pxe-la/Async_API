@@ -1,66 +1,66 @@
-from typing import Protocol, Optional, Any
+from typing import Any, Optional, Protocol, cast
 
-from elasticsearch import AsyncElasticsearch
-
-from models.film import Film
+from elasticsearch import AsyncElasticsearch, NotFoundError
 
 
 class StorageServiceProtocol(Protocol):
-    async def get(self, resource: str, uuid: str) -> dict: ...
+    async def get(self, resource: str, uuid: str) -> dict[Any, Any]: ...
 
     async def search(
-            self, resource: str, page_size: int, page_number: int,
-            **kwargs: str
-    ) -> list[dict]: ...
+        self, resource: str, page_size: int, page_number: int, **kwargs: Any
+    ) -> list[dict[Any, Any]]: ...
 
     async def get_list(
-            self, resource: str, page_size: int, page_number: int
-    ) -> list[dict]: ...
+        self, resource: str, page_size: int, page_number: int
+    ) -> list[dict[Any, Any]]: ...
 
 
 class BaseElasticsearchService(StorageServiceProtocol):
     def __init__(self, elastic: AsyncElasticsearch):
         self.elastic = elastic
 
-    async def get(self, resource: str, uuid: str) -> dict:
-        return await self.elastic.get(index=resource, id=uuid)
+    async def get(self, resource: str, uuid: str) -> dict[Any, Any]:
+        try:
+            response = await self.elastic.get(index=resource, id=uuid)
+            return cast(dict[Any, Any], response["_source"])
+        except NotFoundError:
+            return {}
 
     async def search(
-            self, resource: str, page_size: int, page_number: int,
-            **kwargs: str
-    ) -> list[dict]:
+        self, resource: str, page_size: int, page_number: int, **kwargs: Any
+    ) -> list[dict[Any, Any]]:
         search_query = {
             "query": {"match": {**kwargs}},
             "size": page_size,
             "from": (page_number - 1) * page_size,
         }
 
-        return await self.elastic.search(index=resource, body=search_query)
+        response = await self.elastic.search(index=resource, body=search_query)
+        return [hit["_source"] for hit in response["hits"]["hits"]]
 
     async def get_list(
-            self, resource: str, page_size: int, page_number: int
-    ) -> list[dict]:
+        self, resource: str, page_size: int, page_number: int
+    ) -> list[dict[Any, Any]]:
         search_query = {
             "query": {"match_all": {}},
             "size": page_size,
             "from": (page_number - 1) * page_size,
         }
 
-        return await self.elastic.search(index=resource, body=search_query)
+        response = await self.elastic.search(index=resource, body=search_query)
+        return [hit["_source"] for hit in response["hits"]["hits"]]
 
 
 class FilmElasticSearchService(BaseElasticsearchService):
-    INDEX = "movies"
-
-    async def search(
-            self,
-            query: dict[str, Any],
-            page_size: Optional[int] = None,
-            page_number: Optional[int] = None,
-            sort: Optional[str] = None,
-            **kwargs: str,
+    async def search(  # type: ignore[override]
+        self,
+        resource: str,
+        query: dict[str, Any],
+        page_size: int = 50,
+        page_number: int = 1,
+        sort: Optional[str] = None,
+        **kwargs: Any,
     ) -> list[dict]:
-
         body: dict[str, Any] = {
             "query": query,
         }
@@ -76,5 +76,6 @@ class FilmElasticSearchService(BaseElasticsearchService):
             order = "desc" if sort.startswith("-") else "asc"
             body["sort"] = [{sort_field: {"order": order}}]
 
-        response = await self.elastic.search(index=self.INDEX, body=body)
-        return [Film(**hit["_source"]) for hit in response["hits"]["hits"]]
+        response = await self.elastic.search(index=resource, body=body)
+
+        return response["hits"]["hits"]

@@ -1,4 +1,3 @@
-import asyncio
 import json
 import uuid
 
@@ -11,6 +10,7 @@ with open("resources/genre_index.json", "r") as f:
     index_mapping = json.load(f)
 
 test_settings = TestSettings(es_index="genres", es_index_mapping=index_mapping)
+
 
 @pytest_asyncio.fixture(name="es_data")
 async def es_data():

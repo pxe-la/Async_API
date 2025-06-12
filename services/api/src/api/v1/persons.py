@@ -77,7 +77,10 @@ async def search_person_by_name(
 
     return [
         PersonResponse.from_models(
-            person, await film_service.get_films_with_person(str(person.id))
+            person,
+            await film_service.get_films_with_person(
+                str(person.id), page_size, page_number
+            ),
         )
         for person in persons
     ]

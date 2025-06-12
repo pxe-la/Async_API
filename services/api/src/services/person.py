@@ -1,16 +1,16 @@
 import json
 from functools import lru_cache
-from typing import Annotated, List, Optional
+from typing import Annotated, Any, Optional  # noqa:
 
 from db.elastic import get_elastic
 from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch, NotFoundError
+from elasticsearch import AsyncElasticsearch
 from fastapi import Depends
 from models.person import Person
 from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
-from .storage import StorageServiceProtocol, BaseElasticsearchService
+from .storage import BaseElasticsearchService, StorageServiceProtocol
 
 PERSON_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 PERSON_LIST_CACHE_EXPIRE_IN_SECONDS = 60
@@ -29,12 +29,9 @@ class PersonService:
         if cached_person:
             return Person.model_validate_json(cached_person)
 
-        try:
-            response = await self.storage.get(resource=self.INDEX, uuid=person_id)
-        except NotFoundError:
-            return None
+        response = await self.storage.get(resource=self.INDEX, uuid=person_id)
 
-        person = Person(**response["_source"])
+        person = Person(**response)
         await self.cache.set(
             cache_key,
             person.model_dump_json(),
@@ -45,7 +42,7 @@ class PersonService:
 
     async def search_by_name(
         self, name: str, page_size: int, page_number: int
-    ) -> List[Person]:
+    ) -> list[Person]:
         cache_key = self._get_persons_search_cache_key(name, page_size, page_number)
         cached_persons = await self.cache.get(cache_key)
         if cached_persons:
@@ -55,7 +52,7 @@ class PersonService:
             resource=self.INDEX, page_size=page_size, page_number=page_number, name=name
         )
 
-        persons = [Person(**hit["_source"]) for hit in response["hits"]["hits"]]
+        persons = [Person(**hit) for hit in response]
         await self.cache.set(
             cache_key,
             json.dumps([p.model_dump_json() for p in persons]),

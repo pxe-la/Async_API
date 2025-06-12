@@ -1,10 +1,10 @@
 import json
 from functools import lru_cache
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, List, Optional
 
 from db.elastic import get_elastic
 from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch, NotFoundError
+from elasticsearch import AsyncElasticsearch
 from fastapi import Depends
 from models.genre import Genre
 from redis.asyncio import Redis
@@ -29,12 +29,9 @@ class GenreService:
         if cached_genre:
             return Genre.model_validate_json(cached_genre)
 
-        try:
-            response = await self.storage.get(resource=self.INDEX, uuid=genre_id)
-        except NotFoundError:
-            return None
+        response = await self.storage.get(resource=self.INDEX, uuid=genre_id)
 
-        genre = Genre(**response["_source"])
+        genre = Genre(**response)
         await self.cache.set(
             cache_key,
             genre.model_dump_json(),
@@ -45,8 +42,8 @@ class GenreService:
 
     async def list_genres(
         self,
-        page_size: int,
-        page_number: int,
+        page_size: int = 50,
+        page_number: int = 1,
     ) -> List[Genre]:
         cache_key = self._get_genres_list_cache_key(page_size, page_number)
         cached_genres = await self._get_genres_from_cache(cache_key)
@@ -57,8 +54,7 @@ class GenreService:
             resource=self.INDEX, page_size=page_size, page_number=page_number
         )
 
-        genres = [Genre(**hit["_source"]) for hit in response["hits"]["hits"]]
-
+        genres = [Genre(**hit) for hit in response]
         await self._save_genres_to_cache(cache_key, genres)
 
         return genres
