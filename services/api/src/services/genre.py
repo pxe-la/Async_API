@@ -10,6 +10,7 @@ from models.genre import Genre
 from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
+from .storage import BaseElasticsearchService, StorageServiceProtocol
 
 GENRE_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 GENRE_LIST_CACHE_EXPIRE_IN_SECONDS = 60
@@ -18,9 +19,9 @@ GENRE_LIST_CACHE_EXPIRE_IN_SECONDS = 60
 class GenreService:
     INDEX = "genres"
 
-    def __init__(self, cache: CacheServiceProtocol, elastic: AsyncElasticsearch):
+    def __init__(self, cache: CacheServiceProtocol, storage: StorageServiceProtocol):
         self.cache = cache
-        self.elastic = elastic
+        self.storage = storage
 
     async def get_by_id(self, genre_id: str) -> Optional[Genre]:
         cache_key = self._get_genre_cache_key(genre_id)
@@ -29,7 +30,7 @@ class GenreService:
             return Genre.model_validate_json(cached_genre)
 
         try:
-            response = await self.elastic.get(index=self.INDEX, id=genre_id)
+            response = await self.storage.get(resource=self.INDEX, uuid=genre_id)
         except NotFoundError:
             return None
 
@@ -52,22 +53,15 @@ class GenreService:
         if cached_genres:
             return cached_genres
 
-        genres = await self._get_genres_from_elastic(
-            {
-                "query": {"match_all": {}},
-                "from": (page_number - 1) * page_size,
-                "size": page_size,
-            },
+        response = await self.storage.get_list(
+            resource=self.INDEX, page_size=page_size, page_number=page_number
         )
+
+        genres = [Genre(**hit["_source"]) for hit in response["hits"]["hits"]]
 
         await self._save_genres_to_cache(cache_key, genres)
 
         return genres
-
-    async def _get_genres_from_elastic(self, body: Dict[str, Any]) -> List[Genre]:
-        response = await self.elastic.search(index=self.INDEX, body=body)
-
-        return [Genre(**hit["_source"]) for hit in response["hits"]["hits"]]
 
     def _get_genre_cache_key(self, genre_id: str) -> str:
         return f"genre:{genre_id}"
@@ -96,4 +90,5 @@ def get_genre_service(
     elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
 ) -> GenreService:
     cache = RedisCacheService(redis)
-    return GenreService(cache, elastic)
+    elastic_service = BaseElasticsearchService(elastic)
+    return GenreService(cache, elastic_service)
