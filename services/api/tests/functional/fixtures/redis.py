@@ -5,7 +5,7 @@ from redis.asyncio import Redis
 from settings import settings
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(autouse=True)
 async def redis_client():
     redis_client = Redis(host=settings.redis_host, port=settings.redis_port)
     await redis_client.flushdb()
