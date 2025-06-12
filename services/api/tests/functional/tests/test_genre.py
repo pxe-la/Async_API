@@ -3,17 +3,19 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from elasticsearch.helpers import async_bulk
-from tests.functional.settings import TestSettings
 
-with open("resources/genre_index.json", "r") as f:
+index_name = "genres"
+with open("resources/es_genres_mapping.json", "r") as f:
     index_mapping = json.load(f)
 
-test_settings = TestSettings(es_index="genres", es_index_mapping=index_mapping)
+
+@pytest_asyncio.fixture(scope="module", autouse=True)
+async def seed_es(es_fill_index, es_genres_asset):
+    await es_fill_index(index_name, index_mapping, es_genres_asset)
 
 
-@pytest_asyncio.fixture(name="es_data")
-async def es_data():
+@pytest_asyncio.fixture
+async def es_data(test_settings):
     es_data = [
         {
             "id": str(uuid.uuid4()),
@@ -36,41 +38,21 @@ async def es_data():
     return bulk_query
 
 
-@pytest_asyncio.fixture(name="es_write_data", scope="module")
-async def es_write_data(es_client):
-    async def inner(data: list[dict]):
-        if await es_client.indices.exists(index=test_settings.es_index):
-            await es_client.indices.delete(index=test_settings.es_index)
-        await es_client.indices.create(
-            index=test_settings.es_index, **test_settings.es_index_mapping
-        )
-        updated, errors = await async_bulk(client=es_client, actions=data)
-        await es_client.indices.refresh(index=test_settings.es_index)
-
-        if errors:
-            raise Exception("Ошибка записи данных в Elasticsearch")
-
-    return inner
-
-
 @pytest.mark.parametrize(
     "query_data, expected_answer",
     [
         ({}, {"status": 200, "length": 50}),
         ({"page_size": 40, "page_number": 1}, {"status": 200, "length": 40}),
-        ({"page_size": 40, "page_number": 2}, {"status": 200, "length": 20}),
+        ({"page_size": 40, "page_number": 2}, {"status": 200, "length": 40}),
     ],
 )
 @pytest.mark.asyncio
 async def test_genres_list(
     get_redis_cache,
     make_get_request,
-    es_write_data,
-    es_data,
     query_data,
     expected_answer,
 ):
-    await es_write_data(es_data)
     response = await make_get_request("api/v1/genres/", query_data)
 
     cache_key = "genres:list"
@@ -82,8 +64,8 @@ async def test_genres_list(
     cache_key += ":" + str(page_number)
 
     cache = await get_redis_cache(cache_key)
-    cache_ids = set([obj["id"] for obj in cache])
-    response_ids = set([obj["uuid"] for obj in response["body"]])
+    cache_ids = {obj["id"] for obj in cache}
+    response_ids = {obj["uuid"] for obj in response["body"]}
 
     assert cache_ids == response_ids
 
@@ -93,15 +75,12 @@ async def test_genres_list(
 
 
 @pytest.mark.asyncio
-async def test_genres_detail_200(
-    get_redis_cache, make_get_request, es_write_data, es_data, es_client
-):
-    await es_write_data(es_data)
-    response = await make_get_request("api/v1/genres/", {})
+async def test_genres_detail_200(get_redis_cache, make_get_request, es_client):
+    response = await make_get_request("api/v1/genres/")
     obj = response["body"][0]
     obj_uuid = obj["uuid"]
 
-    response_2 = await make_get_request(f"api/v1/genres/{obj_uuid}", {})
+    response_2 = await make_get_request(f"api/v1/genres/{obj_uuid}")
 
     cache_obj = await get_redis_cache(f"genre:{obj_uuid}")
 
