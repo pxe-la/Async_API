@@ -21,8 +21,8 @@ class FilmElasticSearchService(BaseElasticsearchService):
         self,
         resource: str,
         query: dict[str, Any],
-        page_size: int = 50,
-        page_number: int = 1,
+        page_size: int,
+        page_number: int,
         sort: Optional[str] = None,
         **kwargs: Any,
     ) -> list[dict]:
@@ -73,8 +73,8 @@ class FilmService:
     async def search_films(
         self,
         query: str,
-        page_size: int = 50,
-        page_number: int = 1,
+        page_size: int,
+        page_number: int,
     ) -> List[Film]:
         cache_key = self._get_films_search_cache_key(query, page_size, page_number)
         cached_films = await self._get_films_from_cache(cache_key)
@@ -106,8 +106,8 @@ class FilmService:
 
     async def list_films(
         self,
-        page_size: int = 50,
-        page_number: int = 1,
+        page_size: int,
+        page_number: int,
         genre_id: Optional[str] = None,
         sort: str = "imdb_rating",
     ) -> List[Film]:
@@ -141,8 +141,8 @@ class FilmService:
     async def get_films_with_person(
         self,
         person_id: str,
-        page_size: int = 50,
-        page_number: int = 1,
+        page_size: int,
+        page_number: int,
         sort: str = "imdb_rating",
     ) -> List[Film]:
         cache_key = self._get_person_films_cache_key(person_id)

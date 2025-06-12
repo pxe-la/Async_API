@@ -42,8 +42,8 @@ class GenreService:
 
     async def list_genres(
         self,
-        page_size: int = 50,
-        page_number: int = 1,
+        page_size,
+        page_number,
     ) -> List[Genre]:
         cache_key = self._get_genres_list_cache_key(page_size, page_number)
         cached_genres = await self._get_genres_from_cache(cache_key)
