@@ -134,7 +134,6 @@ async def test_search_pagination(
     assert len(response1["body"]) > 0
     assert len(response2["body"]) > 0
     assert len(response3["body"]) > 0
-
     assert (response1["body"] + response2["body"]) == response3["body"]
 
 
@@ -172,7 +171,6 @@ async def test_search_cache(es_manager, make_get_request, params):
     assert response1["status"] == HTTPStatus.OK
     assert response2["status"] == HTTPStatus.OK
     assert len(response1["body"]) > 0
-
     assert response1["body"] == response2["body"]
 
 
@@ -207,11 +205,10 @@ async def test_search_by_field(
     query = SEARCH_QUERIES[test_param]
     expected_movie = TEST_MOVIES[test_param]
     expected_ids = {expected_movie.id}
-
     params = {"query": query, "page_number": 1, "page_size": 10}
+
     response = await make_get_request(SEARCH_URL, params)
+    returned_ids = {film["uuid"] for film in response["body"]}
 
     assert response["status"] == HTTPStatus.OK
-
-    returned_ids = {film["uuid"] for film in response["body"]}
     assert returned_ids == expected_ids

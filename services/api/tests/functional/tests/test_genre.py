@@ -53,24 +53,19 @@ async def test_genres_list(
     query_data,
     expected_answer,
 ):
-    response = await make_get_request("api/v1/genres/", query_data)
-
     cache_key = "genres:list"
-
     page_size = query_data.get("page_size", "50")
     cache_key += ":" + str(page_size)
-
     page_number = query_data.get("page_number", "1")
     cache_key += ":" + str(page_number)
 
+    response = await make_get_request("api/v1/genres/", query_data)
     cache = await get_redis_cache(cache_key)
     cache_ids = {obj["id"] for obj in cache}
     response_ids = {obj["uuid"] for obj in response["body"]}
 
     assert cache_ids == response_ids
-
     assert response["status"] == expected_answer["status"]
-
     assert len(response["body"]) == expected_answer["length"]
 
 
@@ -79,9 +74,7 @@ async def test_genres_detail_200(get_redis_cache, make_get_request, es_client):
     response = await make_get_request("api/v1/genres/")
     obj = response["body"][0]
     obj_uuid = obj["uuid"]
-
     response_2 = await make_get_request(f"api/v1/genres/{obj_uuid}")
-
     cache_obj = await get_redis_cache(f"genre:{obj_uuid}")
 
     assert response_2["status"] == 200

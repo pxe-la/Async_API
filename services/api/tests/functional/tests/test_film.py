@@ -26,21 +26,18 @@ async def seed_es(es_fill_index, es_movies_asset):
 )
 @pytest.mark.asyncio
 async def test_get_film_by_id(es_movies_asset, make_get_request, uuid):
-    expected_movie = next(movie for movie in es_movies_asset if movie["id"] == uuid)
-
-    response = await make_get_request(f"api/v1/films/{uuid}")
-
-    assert response["status"] == HTTPStatus.OK
-
-    response_body = response["body"]
-
-    assert response_body["uuid"] == expected_movie["id"]
-    assert response_body["title"] == expected_movie["title"]
-    assert response_body["imdb_rating"] == expected_movie["imdb_rating"]
-
     def sort_key(x):
         return x["id"]
 
+    expected_movie = next(movie for movie in es_movies_asset if movie["id"] == uuid)
+
+    response = await make_get_request(f"api/v1/films/{uuid}")
+    response_body = response["body"]
+
+    assert response["status"] == HTTPStatus.OK
+    assert response_body["uuid"] == expected_movie["id"]
+    assert response_body["title"] == expected_movie["title"]
+    assert response_body["imdb_rating"] == expected_movie["imdb_rating"]
     assert sorted(response_body["genre"], key=sort_key) == sorted(
         expected_movie["genres"], key=sort_key
     )
@@ -67,9 +64,7 @@ async def test_get_film_by_id(es_movies_asset, make_get_request, uuid):
 @pytest.mark.asyncio
 async def test_films_by_id_cache(es_manager, make_get_request, uuid):
     url = f"api/v1/films/{uuid}"
-
     response1 = await make_get_request(url)
-
     await es_manager.clean()
 
     response2 = await make_get_request(url)
@@ -115,7 +110,6 @@ async def test_list_films(flush_redis, make_get_request, params):
 
     assert response["status"] == HTTPStatus.OK
     assert len(response["body"]) == params.get("page_size", 50)
-
     for film in response["body"]:
         assert is_valid_uuid(film["uuid"])
         assert type(film["title"]) is str
@@ -133,17 +127,16 @@ async def test_list_films(flush_redis, make_get_request, params):
 )
 async def test_list_films_sort(make_get_request, sort_param):
     params = {"sort": sort_param} if sort_param else {}
+    reverse_order = sort_param.startswith("-") if sort_param else True
+
     response = await make_get_request("api/v1/films/", params)
-
-    assert response["status"] == HTTPStatus.OK
-
     ratings = [
         film["imdb_rating"]
         for film in response["body"]
         if film["imdb_rating"] is not None
     ]
 
-    reverse_order = sort_param.startswith("-") if sort_param else True
+    assert response["status"] == HTTPStatus.OK
     assert ratings == sorted(ratings, reverse=reverse_order)
 
 
@@ -190,6 +183,7 @@ async def test_list_films_pagination_length(make_get_request, params):
 @pytest.mark.asyncio
 async def test_list_films_pagination_content(make_get_request):
     url = "api/v1/films/"
+
     response1 = await make_get_request(url, {"page_size": 50, "page_number": 1})
     response2 = await make_get_request(url, {"page_size": 50, "page_number": 2})
     response3 = await make_get_request(url, {"page_size": 100, "page_number": 1})
@@ -197,7 +191,6 @@ async def test_list_films_pagination_content(make_get_request):
     assert len(response1["body"]) > 0
     assert len(response2["body"]) > 0
     assert len(response3["body"]) > 0
-
     assert (response1["body"] + response2["body"]) == response3["body"]
 
 
@@ -214,14 +207,13 @@ async def test_list_films_pagination_content(make_get_request):
 async def test_list_films_by_genre(make_get_request, es_movies_asset, genre_id):
     page_size = 100
     params = {"genre": genre_id, "page_size": page_size}
-
+    responses_statuses = set()
     queried_movie_ids = set()
     queried_total_length = 0
+
     for i in range(1, 100):
         response = await make_get_request("api/v1/films/", {**params, "page_number": i})
-
-        assert response["status"] == HTTPStatus.OK
-
+        responses_statuses.add(response["status"])
         queried_movie_ids.update({movie["uuid"] for movie in response["body"]})
         queried_total_length += len(response["body"])
 
@@ -236,6 +228,7 @@ async def test_list_films_by_genre(make_get_request, es_movies_asset, genre_id):
 
     assert queried_total_length == len(expected_movie_ids_with_genre)
     assert queried_movie_ids == expected_movie_ids_with_genre
+    assert len(responses_statuses) == 1 and responses_statuses.pop() == HTTPStatus.OK
 
 
 @pytest.mark.parametrize(
@@ -250,7 +243,6 @@ async def test_list_films_by_genre(make_get_request, es_movies_asset, genre_id):
 @pytest.mark.asyncio
 async def test_list_films_cache(es_manager, make_get_request, params):
     response1 = await make_get_request("api/v1/films/", params)
-
     await es_manager.clean()
 
     response2 = await make_get_request("api/v1/films/", params)
