@@ -35,7 +35,9 @@ async def es_fill_index(es_client):
             await es_client.indices.delete(index=index)
 
         await es_client.indices.create(index=index, **mapping)
-        _, errors = await async_bulk(client=es_client, actions=index_data)
+        _, errors = await async_bulk(
+            client=es_client, actions=index_data, refresh="wait_for"
+        )
         if errors:
             raise Exception("Ошибка записи данных в Elasticsearch")
 
