@@ -41,8 +41,6 @@ async def es_fill_index(es_client):
         if errors:
             raise Exception("Ошибка записи данных в Elasticsearch")
 
-        await es_client.indices.refresh(index=index)
-
     return inner
 
 
