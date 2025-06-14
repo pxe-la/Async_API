@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import os
 
-from backoff import backoff
+import backoff
+import elastic_transport
 from elasticsearch import Elasticsearch
 
 
-@backoff()
+@backoff.on_exception(backoff.expo, elastic_transport.ConnectionError)
 def ping_es(es: Elasticsearch):
     es.info()
 

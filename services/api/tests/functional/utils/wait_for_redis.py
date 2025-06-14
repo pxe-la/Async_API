@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import os
 
-from backoff import backoff
-from redis import Redis
+import backoff
+from redis import Redis, exceptions
 
 
-@backoff()
+@backoff.on_exception(backoff.expo, exceptions.ConnectionError)
 def ping_redis(redis: Redis):
     redis.ping()
 
