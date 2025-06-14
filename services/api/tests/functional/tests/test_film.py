@@ -64,9 +64,9 @@ async def test_get_film_by_id(es_movies_asset, make_get_request, uuid):
 @pytest.mark.asyncio
 async def test_films_by_id_cache(es_manager, make_get_request, uuid):
     url = f"api/v1/films/{uuid}"
+
     response1 = await make_get_request(url)
     await es_manager.clean()
-
     response2 = await make_get_request(url)
 
     assert response1["status"] == HTTPStatus.OK
