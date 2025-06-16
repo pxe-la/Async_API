@@ -10,7 +10,7 @@ def init_elastic(es_client: AsyncElasticsearch):
     es = es_client
 
 
-async def get_elastic() -> AsyncElasticsearch:
+def get_elastic() -> AsyncElasticsearch:
     if not es:
         raise ValueError("Elasticsearch client is not initialized.")
     return es
