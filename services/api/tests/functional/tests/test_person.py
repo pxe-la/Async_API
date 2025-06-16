@@ -154,6 +154,7 @@ async def test_search_person_cache(es_manager, make_get_request, params):
 @pytest.mark.asyncio
 async def test_search_person_wrong_parameter(make_get_request, params):
     response = await make_get_request(SEARCH_URL, params)
+
     assert response["status"] == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
@@ -176,18 +177,15 @@ async def test_get_person_films(make_get_request, es_persons_asset, es_movies_as
         if person_in_film:
             expected_films = person_films
             break
-
-    assert person_in_film is not None
     person_id = person_in_film["id"]
 
     response = await make_get_request(f"api/v1/persons/{person_id}/films")
-
-    assert response["status"] == HTTPStatus.OK
-    assert len(response["body"]) > 0
-
     response_film_ids = {film["uuid"] for film in response["body"]}
     expected_film_ids = {movie["id"] for movie in expected_films}
 
+    assert person_in_film is not None
+    assert response["status"] == HTTPStatus.OK
+    assert len(response["body"]) > 0
     assert response_film_ids == expected_film_ids
 
     for film in response["body"]:
