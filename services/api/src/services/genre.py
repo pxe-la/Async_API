@@ -1,28 +1,36 @@
 import json
+from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Annotated, List, Optional
 
-from db.elastic import get_elastic
-from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from models.genre import Genre
-from redis.asyncio import Redis
 
-from .cache import CacheServiceProtocol, RedisCacheService
-from .elastic_storage import ElasticsearchStorageService
-from .storage import StorageServiceProtocol
+from .cache import CacheServiceProtocol, get_cache_service
+from .search import SearchServiceABC, get_search_service
 
 GENRE_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 GENRE_LIST_CACHE_EXPIRE_IN_SECONDS = 60
 
 
-class GenreService:
+class GenreServiceABC(ABC):
+    @abstractmethod
+    async def get_by_id(self, genre_id: str) -> Optional[Genre]:
+        """Retrieve a genre by its ID."""
+        ...
+
+    @abstractmethod
+    async def list_genres(self, page_size: int, page_number: int) -> List[Genre]:
+        """List genres with pagination."""
+        ...
+
+
+class GenreService(GenreServiceABC):
     INDEX = "genres"
 
-    def __init__(self, cache: CacheServiceProtocol, storage: StorageServiceProtocol):
+    def __init__(self, cache: CacheServiceProtocol, search_service: SearchServiceABC):
         self.cache = cache
-        self.storage = storage
+        self.search_service = search_service
 
     async def get_by_id(self, genre_id: str) -> Optional[Genre]:
         cache_key = self._get_genre_cache_key(genre_id)
@@ -30,9 +38,9 @@ class GenreService:
         if cached_genre:
             return Genre.model_validate_json(cached_genre)
 
-        try:
-            response = await self.storage.get(resource=self.INDEX, uuid=genre_id)
-        except NotFoundError:
+        response = await self.search_service.get(resource=self.INDEX, uuid=genre_id)
+
+        if response is None:
             return None
 
         genre = Genre(**response)
@@ -54,7 +62,7 @@ class GenreService:
         if cached_genres:
             return cached_genres
 
-        response = await self.storage.get_list(
+        response = await self.search_service.get_list(
             resource=self.INDEX, page_size=page_size, page_number=page_number
         )
 
@@ -86,9 +94,7 @@ class GenreService:
 
 @lru_cache()
 def get_genre_service(
-    redis: Annotated[Redis, Depends(get_redis)],
-    elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
-) -> GenreService:
-    cache = RedisCacheService(redis)
-    elastic_service = ElasticsearchStorageService(elastic)
-    return GenreService(cache, elastic_service)
+    cache_service: Annotated[CacheServiceProtocol, Depends(get_cache_service)],
+    search_service: Annotated[SearchServiceABC, Depends(get_search_service)],
+) -> GenreServiceABC:
+    return GenreService(cache_service, search_service)

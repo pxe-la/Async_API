@@ -1,17 +1,12 @@
 import json
 from functools import lru_cache
-from typing import Annotated, Any, Optional  # noqa:
+from typing import Annotated, Optional
 
-from db.elastic import get_elastic
-from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from models.person import Person
-from redis.asyncio import Redis
 
-from .cache import CacheServiceProtocol, RedisCacheService
-from .elastic_storage import ElasticsearchStorageService
-from .storage import StorageServiceProtocol
+from .cache import CacheServiceProtocol, get_cache_service
+from .search import SearchServiceABC, get_search_service
 
 PERSON_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 PERSON_LIST_CACHE_EXPIRE_IN_SECONDS = 60
@@ -20,7 +15,7 @@ PERSON_LIST_CACHE_EXPIRE_IN_SECONDS = 60
 class PersonService:
     INDEX = "persons"
 
-    def __init__(self, cache: CacheServiceProtocol, storage: StorageServiceProtocol):
+    def __init__(self, cache: CacheServiceProtocol, storage: SearchServiceABC):
         self.cache = cache
         self.storage = storage
 
@@ -30,9 +25,9 @@ class PersonService:
         if cached_person:
             return Person.model_validate_json(cached_person)
 
-        try:
-            response = await self.storage.get(resource=self.INDEX, uuid=person_id)
-        except NotFoundError:
+        response = await self.storage.get(resource=self.INDEX, uuid=person_id)
+
+        if response is None:
             return None
 
         person = Person(**response)
@@ -80,9 +75,7 @@ class PersonService:
 
 @lru_cache()
 def get_person_service(
-    redis: Annotated[Redis, Depends(get_redis)],
-    elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
+    cache_service: Annotated[CacheServiceProtocol, Depends(get_cache_service)],
+    search_service: Annotated[SearchServiceABC, Depends(get_search_service)],
 ) -> PersonService:
-    cache = RedisCacheService(redis)
-    elastic_service = ElasticsearchStorageService(elastic)
-    return PersonService(cache, elastic_service)
+    return PersonService(cache_service, search_service)

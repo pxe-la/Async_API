@@ -8,6 +8,8 @@ ignore =
     A003
     ; conflicts with fastapi's use of queries
     B008
+    ; conflicts with black's formatting
+    E701
 
 per-file-ignores =
     tools/format_code.py:

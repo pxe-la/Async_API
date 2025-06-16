@@ -10,7 +10,7 @@ def init_redis(redis_client: Redis):
     redis = redis_client
 
 
-async def get_redis() -> Redis:
+def get_redis() -> Redis:
     if not redis:
         raise ValueError("Redis client is not initialized.")
     return redis

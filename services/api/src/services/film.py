@@ -1,32 +1,60 @@
 import json
+from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Annotated, Iterable, List, Optional
 
-from db.elastic import get_elastic
-from db.redis import get_redis
-from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
 from models.film import Film
-from redis.asyncio import Redis
 
-from .cache import CacheServiceProtocol, RedisCacheService
-from .elastic_storage import ElasticsearchStorageService
-from .storage import StorageServiceProtocol
+from .cache import CacheServiceProtocol, get_cache_service
+from .search import SearchServiceABC, get_search_service
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 60
 
 
-class FilmService:
+class FilmServiceABC(ABC):
+    @abstractmethod
+    async def get_by_id(self, film_id: str) -> Optional[Film]:
+        pass
+
+    @abstractmethod
+    async def search_films(
+        self, query: str, page_size: int, page_number: int
+    ) -> List[Film]:
+        pass
+
+    @abstractmethod
+    async def list_films(
+        self,
+        page_size: int,
+        page_number: int,
+        genre_id: Optional[str] = None,
+        sort: str = "imdb_rating",
+    ) -> List[Film]:
+        pass
+
+    @abstractmethod
+    async def get_films_with_person(
+        self,
+        person_id: str,
+        page_size: int,
+        page_number: int,
+        sort: str = "imdb_rating",
+    ) -> List[Film]:
+        pass
+
+
+class FilmService(FilmServiceABC):
     INDEX = "movies"
 
     def __init__(
         self,
         cache: CacheServiceProtocol,
-        elastic_storage_service: StorageServiceProtocol,
+        search_service: SearchServiceABC,
     ):
         self.cache = cache
-        self.elastic_storage = elastic_storage_service
+        self.search_service = search_service
 
     async def get_by_id(self, film_id: str) -> Optional[Film]:
         cache_key = self._get_film_cache_key(film_id)
@@ -34,9 +62,9 @@ class FilmService:
         if cached_film:
             return Film.model_validate_json(cached_film)
 
-        try:
-            response = await self.elastic_storage.get(resource=self.INDEX, uuid=film_id)
-        except NotFoundError:
+        response = await self.search_service.get(resource=self.INDEX, uuid=film_id)
+
+        if response is None:
             return None
 
         film = Film(**response)
@@ -59,7 +87,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        response = await self.elastic_storage.search_raw_query(
+        response = await self.search_service.search_raw_query(
             resource=self.INDEX,
             query={
                 "multi_match": {
@@ -96,7 +124,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        response = await self.elastic_storage.search_raw_query(
+        response = await self.search_service.search_raw_query(
             resource=self.INDEX,
             query=(
                 {"match_all": {}}
@@ -128,7 +156,7 @@ class FilmService:
         if cached_films:
             return cached_films
 
-        response = await self.elastic_storage.search_raw_query(
+        response = await self.search_service.search_raw_query(
             resource=self.INDEX,
             query={
                 "bool": {
@@ -195,9 +223,7 @@ class FilmService:
 
 @lru_cache()
 def get_film_service(
-    redis: Annotated[Redis, Depends(get_redis)],
-    elastic: Annotated[AsyncElasticsearch, Depends(get_elastic)],
-) -> FilmService:
-    cache = RedisCacheService(redis)
-    elastic_storage_service = ElasticsearchStorageService(elastic)
-    return FilmService(cache, elastic_storage_service)
+    cache_service: Annotated[CacheServiceProtocol, Depends(get_cache_service)],
+    search_service: Annotated[SearchServiceABC, Depends(get_search_service)],
+) -> FilmServiceABC:
+    return FilmService(cache_service, search_service)

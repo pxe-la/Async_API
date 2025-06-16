@@ -7,7 +7,7 @@ from models.film import Film
 from models.genre import Genre
 from models.person import Person
 from pydantic import BaseModel
-from services.film import FilmService, get_film_service
+from services.film import FilmServiceABC, get_film_service
 
 router = APIRouter()
 
@@ -65,7 +65,7 @@ class FilmDetailResponse(BaseModel):
     tags=["films"],
 )
 async def list_films(
-    film_service: Annotated[FilmService, Depends(get_film_service)],
+    film_service: Annotated[FilmServiceABC, Depends(get_film_service)],
     sort: Literal["imdb_rating", "-imdb_rating"] = Query(
         "-imdb_rating",
         examples=["-imdb_rating", "imdb_rating"],
@@ -95,7 +95,7 @@ async def list_films(
     tags=["films"],
 )
 async def search_films(
-    film_service: Annotated[FilmService, Depends(get_film_service)],
+    film_service: Annotated[FilmServiceABC, Depends(get_film_service)],
     query: str = Query(..., min_length=1, description="Search query"),
     page_size: int = Query(50, ge=1, le=100),
     page_number: int = Query(1, ge=1),
@@ -115,7 +115,7 @@ async def search_films(
 )
 async def get_film_by_id(
     film_id: str,
-    film_service: Annotated[FilmService, Depends(get_film_service)],
+    film_service: Annotated[FilmServiceABC, Depends(get_film_service)],
 ) -> FilmDetailResponse:
     film = await film_service.get_by_id(film_id)
     if not film:
