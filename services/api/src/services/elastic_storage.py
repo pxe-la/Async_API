@@ -13,17 +13,18 @@ class ElasticsearchStorageService(StorageServiceProtocol):
 
         return response["_source"]
 
-    async def search_by_text_fields(
+    async def search_by_field(
         self,
         resource: str,
-        fields: dict[str, str],
+        field: str,
+        query: str,
         page_size: int,
         page_number: int,
         sort: Optional[str] = None,
     ) -> list[Any]:
         return await self.search_raw_query(
             resource,
-            query={"match": fields},
+            query={"match": {field: query}},
             page_size=page_size,
             page_number=page_number,
             sort=sort,

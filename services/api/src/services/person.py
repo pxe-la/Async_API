@@ -52,11 +52,12 @@ class PersonService:
         if cached_persons:
             return [Person.model_validate_json(p) for p in json.loads(cached_persons)]
 
-        response = await self.storage.search_by_text_fields(
+        response = await self.storage.search_by_field(
             resource=self.INDEX,
+            field="name",
+            query=name,
             page_size=page_size,
             page_number=page_number,
-            fields={"name": name},
         )
 
         persons = [Person(**item) for item in response]

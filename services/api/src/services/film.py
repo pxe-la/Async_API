@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 
 from .cache import CacheServiceProtocol, RedisCacheService
 from .elastic_storage import ElasticsearchStorageService
+from .storage import StorageServiceProtocol
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5
 FILM_LIST_CACHE_EXPIRE_IN_SECONDS = 60
@@ -22,7 +23,7 @@ class FilmService:
     def __init__(
         self,
         cache: CacheServiceProtocol,
-        elastic_storage_service: ElasticsearchStorageService,
+        elastic_storage_service: StorageServiceProtocol,
     ):
         self.cache = cache
         self.elastic_storage = elastic_storage_service
